@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Copyright (c) 2016 Apple Inc. All rights reserved. -->
+
+<Wix	xmlns		= "http://schemas.microsoft.com/wix/2006/wi"
+		xmlns:fire	= "http://schemas.microsoft.com/wix/FirewallExtension" >
+	
+	<?define ProductManufacturer		= "Apple Inc."?>
+	<?define ProductName				= "Bonjour (QuickLooks Testing)"?>
+	<?define UpgradeCode				= "46AE3251-43D6-41CF-8CDF-E902C38516D1"?>
+	<?define ProductVersion				= "1.0.0"?>
+	<?define ProductVersionMarketing	= "1.0.0"?>
+	<?if $(var.Platform) = x64?>
+		<?define Win64 = "yes" ?>
+		<?define PlatformSystemFolder		= "System64Folder"?>
+		<?define PlatformProgramFilesFolder	= "ProgramFiles64Folder"?>
+		<?define PlatformInstallDir			= "INSTALLDIR64"?>
+		<?define GUID_DNSSDExe				= "528ACC12-D4A8-11DE-927F-58D855D89593"?>
+		<?define GUID_DNSSDDLL				= "20F30EC6-1F92-11DC-8314-0800200C9A66"?>
+		<?define GUID_MDNSNSPDLL			= "255EBC6C-1F92-11DC-8314-0800200C9A66"?>
+		<?define GUID_MDNSResponderExe		= "BB3076CA-D4DF-11E0-8AC8-AA0E4824019B"?>
+	<?else?>
+		<?define Win64 = "no" ?>
+		<?define PlatformSystemFolder		= "SystemFolder"?>
+		<?define PlatformProgramFilesFolder	= "ProgramFilesFolder"?>
+		<?define PlatformInstallDir			= "INSTALLDIR"?>
+		<?define GUID_DNSSDExe				= "DCA08E52-8D4E-43AF-A0F7-9B809FCCFEBF"?>
+		<?define GUID_DNSSDDLL				= "E6B826D2-6338-4822-8DEA-EC03C2CA41A7"?>
+		<?define GUID_MDNSNSPDLL			= "0E416468-0A21-4778-BE61-64AAA5BE1039"?>
+		<?define GUID_MDNSResponderExe		= "836FE314-37A7-4905-90F0-AFE25F315CA3"?>
+	<?endif?>
+	<?define GUID_InstallerCache		= "EDD5CC92-97D7-4364-9CA6-F7001C75A90E"?>
+	
+	<Product
+		Id				= "*"
+		Language		= "1033"
+		Manufacturer	= "$(var.ProductManufacturer)"
+		Name			= "$(var.ProductName)"
+		UpgradeCode		= "$(var.UpgradeCode)"
+		Version			= "$(var.ProductVersion)" >
+		
+		<Package
+			Keywords			= "Installer,MSI"
+			Comments			= "$(var.ProductName) $(var.ProductVersion)"
+			Compressed			= "yes"
+			Description			= "[ProductName] Installer"
+			InstallerVersion	= "300"
+			Languages			= "1033"
+			Manufacturer		= "$(var.ProductManufacturer)"
+			SummaryCodepage		= "1252" />
+		
+		<!-- Launch Conditions -->
+		<Condition
+			Message = "You do not have sufficient privileges to complete this installation for all users of the machine. Log on as an administrator and then retry this installation." >
+			<![CDATA[Privileged]]>
+		</Condition>
+		<Condition
+			Message = "[ProductName] requires that your computer is running Windows XP SP2 or newer.">
+			<![CDATA[((VersionNT=501 AND ServicePackLevel>=2) OR VersionNT>501)]]>
+		</Condition>
+		<?if $(var.Win64) = "no"?>
+		<Condition
+			Message = "This installer is intended for 32-bit versions of Windows" >
+			<![CDATA[NOT VersionNT64]]>
+		</Condition>
+		<?endif?>
+		
+		<!-- Directory Table -->
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="$(var.PlatformSystemFolder)" />
+			<Directory Id="$(var.PlatformProgramFilesFolder)">
+				<Directory Id="Bonjour64InstallFolder" Name="Bonjour">
+					<Directory Id="$(var.PlatformInstallDir)" />
+				</Directory>
+			</Directory>
+			<Directory Id="DesktopFolder" />
+			<Directory Id="CommonAppDataFolder" Name="Application Data">
+				<Directory Id="AppleCommonAppDataFolder" Name="Apple">
+					<Directory Id="CachedInstallationsFolder" Name="Installer Cache">
+						<Directory Id="INSTALLERCACHE" Name="$(var.ProductName) $(var.ProductVersion)" />
+					</Directory>
+				</Directory>
+			</Directory>
+		</Directory>
+		
+		<!-- Features -->
+		<Feature Id="Bonjour" Title="Bonjour" Level="1" AllowAdvertise="no" Display="expand">
+			<ComponentRef Id="InstallerCache" />
+			<Feature Id="mDNSResponder" Title="mDNSResponder" Level="1" AllowAdvertise="no" Absent="disallow">
+				<ComponentRef Id="dns_sd.exe" />
+				<ComponentRef Id="dnssd.dll" />
+				<ComponentRef Id="mdnsNSP.dll" />
+				<ComponentRef Id="mDNSResponder.exe" />
+			</Feature>
+		</Feature>
+		
+		<!-- InstallerCache -->
+		<DirectoryRef Id="INSTALLERCACHE">
+			<Component Id="InstallerCache" Guid="$(var.GUID_InstallerCache)" KeyPath="yes">
+				<Condition><![CDATA[NOT DONTCACHEMSI]]></Condition>
+				<CreateFolder />
+				<CopyFile Id="BonjourQuickLooks.msi" SourceProperty="SourceDir" SourceName="BonjourQuickLooks.msi" DestinationDirectory="INSTALLERCACHE" />
+				<RemoveFile Id="BonjourQuickLooks.msi" Directory="INSTALLERCACHE" Name="BonjourQuickLooks.msi" On="uninstall" />
+				<RemoveFolder Id="INSTALLERCACHE" Directory="INSTALLERCACHE" On="uninstall" />
+			</Component>
+		</DirectoryRef>
+    	
+		<!-- Bonjour -->
+		<DirectoryRef Id="$(var.PlatformSystemFolder)">
+			<Component Id="dns_sd.exe" Guid="$(var.GUID_DNSSDExe)" Win64="$(var.Win64)">
+				<File Id="dns_sd.exe" Name="dns-sd.exe" KeyPath="yes" Source="$(var.dns-sd.TargetPath)" />
+			</Component>
+			<Component Id="dnssd.dll" Guid="$(var.GUID_DNSSDDLL)" Win64="$(var.Win64)">
+				<File Id="dnssd.dll" Name="dnssd.dll" KeyPath="yes" Source="$(var.DLL.TargetPath)" />
+			</Component>
+		</DirectoryRef>
+		
+		<DirectoryRef Id="$(var.PlatformInstallDir)">
+			<Component Id="mdnsNSP.dll" Guid="$(var.GUID_MDNSNSPDLL)" Win64="$(var.Win64)">
+				<File Id="mdnsNSP.dll" Name="mdnsNSP.dll" Source="$(var.mdnsNSP.TargetPath)" KeyPath="yes" SelfRegCost="1024" />
+			</Component>
+			<Component Id="mDNSResponder.exe" Guid="$(var.GUID_MDNSResponderExe)" Win64="$(var.Win64)">
+				<File Id="mDNSResponder.exe" Name="mDNSResponder.exe" Source="$(var.mDNSResponder.TargetPath)" KeyPath="yes">
+					<fire:FirewallException Id="mDNSException1" Name="Bonjour Service" IgnoreFailure="yes" Scope="any" />
+				</File>
+				<ServiceInstall
+					Id				= "BonjourService"
+					Name			= "Bonjour Service"
+					DisplayName		= "Bonjour Service"
+					Description		= "Enables hardware devices and software services to automatically configure themselves on the network and advertise their presence."
+					Start			= "auto"
+					Type			= "ownProcess"
+					ErrorControl	= "normal"
+					Vital			= "yes" >
+					<ServiceDependency Id="Tcpip" Group="no" />
+				</ServiceInstall>
+				<ServiceControl
+					Id		= "BonjourService"
+					Name	= "Bonjour Service"
+					Start	= "install"
+					Stop	= "both"
+					Remove	= "uninstall"
+					Wait	= "yes" />
+				<RegistryValue
+					Name	= "ManageLLRouting"
+					Root	= "HKLM"
+					Key		= "SYSTEM\CurrentControlSet\Services\Bonjour Service\Parameters"
+					Type	= "integer"
+					Value	= "1" />
+				<RegistryKey
+					Root	= "HKLM"
+					Key		= "SOFTWARE\Apple Inc.\Bonjour"
+					Action	= "createAndRemoveOnUninstall" >
+					<RegistryValue
+						Name	= "InstallDir"
+						Type	= "string"
+						Value	= "[$(var.PlatformInstallDir)]" />
+					<RegistryValue
+						Name	= "Version"
+						Type	= "string"
+						Value	= "$(var.ProductVersion)" />
+				</RegistryKey>
+			</Component>
+		</DirectoryRef>
+		
+		<!-- Media -->
+		<Media Id="1" EmbedCab="yes" Cabinet="BonjourQuickLooks.cab" CompressionLevel="high" />
+		
+		<!-- Properties -->
+		<Property Id="ALLUSERS" Value="1" />
+		<Property Id="ARPNOMODIFY" Value="1" />
+		<Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
+		
+		<MajorUpgrade AllowDowngrades="yes" Schedule="afterInstallValidate" />
+	</Product>
+</Wix>
