@@ -1,23 +1,23 @@
-# 简介
+# Introduction
 
-`Airplay2`是apple在`iOS11.3`中新加的特性，用作视频和音频的局域网投放
+`Airplay2` is a new feature added by Apple in `iOS11.3` for LAN and video and audio delivery.
 
-`AirplayServer`作为接收端，可以接收来自支持`Airplay2`设备的数据
+`AirplayServer` as the receiving end, can receive data from the support `Airplay2` device
 
-`AirplayServer`可运行在`Android`设备，代码99%是C语言编写，方便移植
+`AirplayServer` can run on `Android` device, code 99% is written in C language, easy to port
 
-# 功能
+# Features
 
-1. mDNS发布服务
-2. 握手协议
-3. 接收镜像数据
-4. MediaCodec硬解与展示
-5. 接收音频数据
-6. fdk-aac音频解码
-7. AudioTrack播放PCM音乐
+1. mDNS publishing service
+2. Handshake agreement
+3. Receive mirror data
+4. MediaCodec hard solution and display
+5. Receive audio data
+6. fdk-aac audio decoding
+7. AudioTrack plays PCM music
 
-# 演示截图
+# Show Screenshot
 
-下图是一次屏幕数据和音乐的投放演示，其中`iPhone`的系统是`iOS12`
+The following picture is a presentation of screen data and music, where the system of `iPhone` is `iOS12`
 
 ![](https://ww1.sinaimg.cn/large/007rAy9hgy1g0l65hwvg7j30u01o0juj.jpg)

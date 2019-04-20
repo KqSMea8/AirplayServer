@@ -13,13 +13,13 @@
         android:id="@+id/btn_control"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="开始"
+        android:text="Start"
         android:layout_marginLeft="15dp"/>
     <TextView
         android:id="@+id/txt_device"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="未启动"
+        android:text="Not initiated"
         android:layout_toRightOf="@id/btn_control"
         android:layout_marginLeft="15dp"
         android:layout_alignBaseline="@id/btn_control"

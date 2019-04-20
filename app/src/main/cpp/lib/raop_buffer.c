@@ -43,16 +43,16 @@ typedef struct {
 	unsigned int timestamp;
 	unsigned int ssrc;
 
-	/* 内存大小 */
+	/* Memory size */
 	int audio_buffer_size;
-	/* 解码后长度 */
+	/* Decoded length */
 	int audio_buffer_len;
 	void *audio_buffer;
 } raop_buffer_entry_t;
 
 struct raop_buffer_s {
     logger_t *logger;
-	/* 解密使用的key and IV */
+	/* Key and IV used for decryption */
 	unsigned char aeskey[RAOP_AESKEY_LEN];
 	unsigned char aesiv[RAOP_AESIV_LEN];
 
@@ -60,9 +60,9 @@ struct raop_buffer_s {
 
 	/* First and last seqnum */
 	int is_empty;
-	// 播放的序号
+	// Playing sequence number
 	unsigned short first_seqnum;
-	// 收到的序号
+	// Received serial number
 	unsigned short last_seqnum;
 
 	/* RTP buffer entries */
@@ -117,7 +117,7 @@ raop_buffer_init_key_iv(raop_buffer_t *raop_buffer,
                      const unsigned char *ecdh_secret)
 {
 
-    // 初始化key
+    // Initialization key
     unsigned char eaeskey[64];
     memcpy(eaeskey, aeskey, 16);
     sha512_context ctx;
@@ -272,7 +272,7 @@ raop_buffer_queue(raop_buffer_t *raop_buffer, unsigned char *data, unsigned shor
     }
     int payloadsize = datalen - 12;
 #ifdef DUMP_AUDIO
-    // 未解密的文件
+    // Undecrypted file
     if (file_source != NULL) {
         fwrite(&data[12], payloadsize, 1, file_source);
     }
@@ -295,7 +295,7 @@ raop_buffer_queue(raop_buffer_t *raop_buffer, unsigned char *data, unsigned shor
     entry->flags = data[0];
     entry->type = data[1];
     entry->seqnum = seqnum;
-    // 第4个字节开始是pts
+    // The 4th byte starts with pts
     entry->timestamp = (data[4] << 24) | (data[5] << 16) |
                        (data[6] << 8) | data[7];
     entry->ssrc = (data[8] << 24) | (data[9] << 16) |
@@ -305,19 +305,19 @@ raop_buffer_queue(raop_buffer_t *raop_buffer, unsigned char *data, unsigned shor
     encryptedlen = payloadsize/16*16;
     unsigned char packetbuf[payloadsize];
     memset(packetbuf, 0, payloadsize);
-	// 需要在内部初始化
+	// Need to be initialized internally
     AES_CTX aes_ctx_audio;
 	AES_set_key(&aes_ctx_audio, raop_buffer->aeskey, raop_buffer->aesiv, AES_MODE_128);
 	AES_convert_key(&aes_ctx_audio);
     AES_cbc_decrypt(&aes_ctx_audio, &data[12], packetbuf, encryptedlen);
     memcpy(packetbuf+encryptedlen, &data[12+encryptedlen], payloadsize-encryptedlen);
 #ifdef DUMP_AUDIO
-    // 解密的文件
+    // Decrypted file
     if (file_aac != NULL) {
         fwrite(packetbuf, payloadsize, 1, file_aac);
     }
 #endif
-	// aac解码pcm
+	// Aac decoding pcm
     int ret = 0;
     int pkt_size = payloadsize;
     UINT valid_size = payloadsize;
