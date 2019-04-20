@@ -10,6 +10,7 @@
 #include "lib/logger.h"
 #include <malloc.h>
 #include <cstring>
+#include "lib/dnssd.h"
 
 static JavaVM* g_JavaVM;
 
@@ -93,6 +94,8 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
     return JNI_VERSION_1_6;
 }
 
+static dnssd_t *dnssd;
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object) {
     raop_t *raop;
@@ -117,8 +120,25 @@ Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object) {
     raop_start(raop, &port);
     raop_set_port(raop, port);
     LOGD("raop port = % d", raop_get_port(raop));
+
+    int error;
+    dnssd = dnssd_init(&error);
+    if (error) {
+        LOGE("ERROR: Could not initialize dnssd library!\n");
+        LOGE("------------------------------------------\n");
+        LOGE("You could try the following resolutions based on your OS:\n");
+        LOGE("Windows: Try installing http://support.apple.com/kb/DL999\n");
+        LOGE("Debian/Ubuntu: Try installing libavahi-compat-libdnssd-dev package\n");
+        return -1;
+    }
+
+    const char hwaddr[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
+    dnssd_register_raop(dnssd, "Test", port, hwaddr, sizeof(hwaddr), 0);
+    dnssd_register_airplay(dnssd, "Test", port + 1, hwaddr, sizeof(hwaddr));
+
     return (jlong) (void *) raop;
 }
+
 
 extern "C" JNIEXPORT jint JNICALL
 Java_com_fang_myapplication_RaopServer_getPort(JNIEnv* env, jobject object, jlong opaque) {

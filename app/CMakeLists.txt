@@ -33,6 +33,5 @@ find_library( log-lib
 target_link_libraries( raop_server
                        ${log-lib}
         play-lib
-        jdns_sd
         ed25519
         fdk-aac)

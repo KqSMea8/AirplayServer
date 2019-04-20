@@ -16,7 +16,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     private AirPlayServer mAirPlayServer;
     private RaopServer mRaopServer;
-    private DNSNotify mDNSNotify;
 
     private SurfaceView mSurfaceView;
     private Button mBtnControl;
@@ -34,7 +33,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
         mSurfaceView = findViewById(R.id.surface);
         mAirPlayServer = new AirPlayServer();
         mRaopServer = new RaopServer(mSurfaceView);
-        mDNSNotify = new DNSNotify();
     }
 
     @Override
@@ -43,7 +41,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
             case R.id.btn_control: {
                 if (!mIsStart) {
                     startServer();
-                    mTxtDevice.setText("Device name:" + mDNSNotify.getDeviceName());
+                    mTxtDevice.setText("Device name:" + "Test");
                 } else {
                     stopServer();
                     mTxtDevice.setText("Not initiated");
@@ -56,26 +54,20 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
 
     private void startServer() {
-        mDNSNotify.changeDeviceName();
         mAirPlayServer.startServer();
         int airplayPort = mAirPlayServer.getPort();
         if (airplayPort == 0) {
             Toast.makeText(this.getApplicationContext(), "Failed to start airplay service", Toast.LENGTH_SHORT).show();
-        } else {
-            mDNSNotify.registerAirplay(airplayPort);
         }
         mRaopServer.startServer();
         int raopPort = mRaopServer.getPort();
         if (raopPort == 0) {
             Toast.makeText(this.getApplicationContext(), "Failed to start raop service", Toast.LENGTH_SHORT).show();
-        } else {
-            mDNSNotify.registerRaop(raopPort);
         }
         Log.d(TAG, "airplayPort = " + airplayPort + ", raopPort = " + raopPort);
     }
 
     private void stopServer() {
-        mDNSNotify.stop();
         mAirPlayServer.stopServer();
         mRaopServer.stopServer();
     }

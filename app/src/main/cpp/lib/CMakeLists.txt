@@ -26,6 +26,7 @@ add_library( play-lib
 find_library( log-lib
         log )
 target_link_libraries( play-lib
+	dns_sd
         crypto
         curve25519
         ed25519

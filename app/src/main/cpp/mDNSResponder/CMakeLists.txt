@@ -6,11 +6,10 @@ add_definitions(-DMDNS_UDS_SERVERPATH="/dev/socket/mdnsd" )
 add_definitions(-DMDNS_USERNAME="mdnsr" )
 
 include_directories(mDNSPosix mDNSCore mDNSShared)
-add_library( jdns_sd
+add_library( dns_sd
         SHARED
         mDNSShared/dnssd_clientlib.c
         mDNSShared/dnssd_clientstub.c
-        mDNSShared/dnssd_ipc.c
-        JNISupport.c)
+        mDNSShared/dnssd_ipc.c)
 
 
