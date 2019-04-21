@@ -10,7 +10,8 @@ add_library( play-lib
         ${DIR_SRCS}
         )
 target_link_libraries( play-lib
-	dns_sd
+		pthread
+		dns_sd
         crypto
         curve25519
         ed25519
