@@ -9,11 +9,23 @@ add_library( play-lib
         SHARED
         ${DIR_SRCS}
         )
+
+if(UNIX AND NOT APPLE)
 target_link_libraries( play-lib
-		pthread
 		dns_sd
+		pthread
         crypto
         curve25519
         ed25519
         playfair
         plist )
+else()
+target_link_libraries( play-lib
+		pthread
+        crypto
+        curve25519
+        ed25519
+        playfair
+        plist )
+endif()
+        

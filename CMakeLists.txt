@@ -7,8 +7,6 @@ add_subdirectory(lib/playfair)
 add_subdirectory(lib/plist)
 add_subdirectory(lib)
 
-add_subdirectory(mDNSResponder)
-
 add_executable( airplay_server airplay_server.cpp)
 target_link_libraries ( airplay_server play-lib
         ed25519 )

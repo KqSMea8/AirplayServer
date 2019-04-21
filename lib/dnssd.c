@@ -34,7 +34,8 @@
 #include "global.h"
 #include "compat.h"
 #include "utils.h"
-#include "../mDNSResponder/mDNSShared/dns_sd.h"
+
+#include <dns_sd.h>
 
 #define MAX_DEVICEID 18
 #define MAX_SERVNAME 256
