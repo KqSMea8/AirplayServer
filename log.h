@@ -6,8 +6,8 @@
 #define AIRPLAYSERVER_LOG_H
 
 #include <cstdio>
+#include <stdarg.h>
 
-#define TAG "raop"
 #define LEVEL_ERROR 0
 #define LEVEL_WARN 1
 #define LEVEL_INFO 2
@@ -18,6 +18,7 @@ void log(int level, const char* format, ...) {
     va_list vargs;
     va_start(vargs, format);
     vprintf(format, vargs);
+    printf("\n");
     va_end(vargs);
 }
 

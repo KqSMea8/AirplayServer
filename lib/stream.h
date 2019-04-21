@@ -8,18 +8,18 @@
 #include <stdint.h>
 
 typedef struct {
-    int nGOPIndex;
+    int n_gop_index;
     int frame_type;
-    int nFramePOC;
+    int n_frame_poc;
     unsigned char *data;
     int data_len;
-    unsigned int nTimeStamp;
+    unsigned int n_time_stamp;
     uint64_t pts;
 } h264_decode_struct;
 
 typedef struct {
     unsigned short *data;
     int data_len;
-    unsigned int pts;
-} pcm_data_struct;
+} aac_decode_struct;
+
 #endif //AIRPLAYSERVER_STREAM_H

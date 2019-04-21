@@ -21,14 +21,14 @@
 
 struct h264codec_s {
     unsigned char compatibility;
-    short lengthofPPS;
-    short lengthofSPS;
+    short length_of_pps;
+    short length_of_sps;
     unsigned char level;
-    unsigned char numberOfPPS;
+    unsigned char number_of_pps;
     unsigned char* picture_parameter_set;
     unsigned char profile_high;
-    unsigned char reserved3andSPS;
-    unsigned char reserved6andNAL;
+    unsigned char reserved_3_and_sps;
+    unsigned char reserved_6_and_nal;
     unsigned char* sequence;
     unsigned char version;
 };
@@ -359,7 +359,7 @@ raop_rtp_mirror_thread(void *arg)
                     float mWidthSource = byteutils_get_float(packet, 40);
                     float mHeightSource = byteutils_get_float(packet, 44);
                     float mWidth = byteutils_get_float(packet, 56);
-                    float mHeight =byteutils_get_float(packet, 60);
+                    float mHeight = byteutils_get_float(packet, 60);
                     logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "mWidthSource = %f mHeightSource = %f mWidth = %f mHeight = %f", mWidthSource, mHeightSource, mWidth, mHeight);
                     /*int mRotateMode = 0;
 
@@ -385,31 +385,31 @@ raop_rtp_mirror_thread(void *arg)
                     h264.profile_high = payload[1];
                     h264.compatibility = payload[2];
                     h264.level = payload[3];
-                    h264.reserved6andNAL = payload[4];
-                    h264.reserved3andSPS = payload[5];
-                    h264.lengthofSPS = (short) (((payload[6] & 255) << 8) + (payload[7] & 255));
-                    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "lengthofSPS = %d", h264.lengthofSPS);
-                    h264.sequence = malloc(h264.lengthofSPS);
-                    memcpy(h264.sequence, payload + 8, h264.lengthofSPS);
-                    h264.numberOfPPS = payload[h264.lengthofSPS + 8];
-                    h264.lengthofPPS = (short) (((payload[h264.lengthofSPS + 9] & 2040) + payload[h264.lengthofSPS + 10]) & 255);
-                    h264.picture_parameter_set = malloc(h264.lengthofPPS);
-                    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "lengthofPPS = %d", h264.lengthofPPS);
-                    memcpy(h264.picture_parameter_set, payload + h264.lengthofSPS + 11, h264.lengthofPPS);
-                    if (h264.lengthofSPS + h264.lengthofPPS < 102400) {
+                    h264.reserved_6_and_nal = payload[4];
+                    h264.reserved_3_and_sps = payload[5];
+                    h264.length_of_sps = (short) (((payload[6] & 255) << 8) + (payload[7] & 255));
+                    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "lengthofSPS = %d", h264.length_of_sps);
+                    h264.sequence = malloc(h264.length_of_sps);
+                    memcpy(h264.sequence, payload + 8, h264.length_of_sps);
+                    h264.number_of_pps = payload[h264.length_of_sps + 8];
+                    h264.length_of_pps = (short) (((payload[h264.length_of_sps + 9] & 2040) + payload[h264.length_of_sps + 10]) & 255);
+                    h264.picture_parameter_set = malloc(h264.length_of_pps);
+                    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "lengthofPPS = %d", h264.length_of_pps);
+                    memcpy(h264.picture_parameter_set, payload + h264.length_of_sps + 11, h264.length_of_pps);
+                    if (h264.length_of_sps + h264.length_of_pps < 102400) {
                         // Copy spspps
-                        int sps_pps_len = (h264.lengthofSPS + h264.lengthofPPS) + 8;
+                        int sps_pps_len = (h264.length_of_sps + h264.length_of_pps) + 8;
                         unsigned char sps_pps[sps_pps_len];
                         sps_pps[0] = 0;
                         sps_pps[1] = 0;
                         sps_pps[2] = 0;
                         sps_pps[3] = 1;
-                        memcpy(sps_pps + 4, h264.sequence, h264.lengthofSPS);
-                        sps_pps[h264.lengthofSPS + 4] = 0;
-                        sps_pps[h264.lengthofSPS + 5] = 0;
-                        sps_pps[h264.lengthofSPS + 6] = 0;
-                        sps_pps[h264.lengthofSPS + 7] = 1;
-                        memcpy(sps_pps + h264.lengthofSPS + 8, h264.picture_parameter_set, h264.lengthofPPS);
+                        memcpy(sps_pps + 4, h264.sequence, h264.length_of_sps);
+                        sps_pps[h264.length_of_sps + 4] = 0;
+                        sps_pps[h264.length_of_sps + 5] = 0;
+                        sps_pps[h264.length_of_sps + 6] = 0;
+                        sps_pps[h264.length_of_sps + 7] = 1;
+                        memcpy(sps_pps + h264.length_of_sps + 8, h264.picture_parameter_set, h264.length_of_pps);
 #ifdef DUMP_H264
                         fwrite(sps_pps, sps_pps_len, 1, file);
 #endif

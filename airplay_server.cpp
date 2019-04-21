@@ -1,23 +1,65 @@
 #include <stddef.h>
-#include "lib/raop.h"
+#include <cstring>
+#include <signal.h>
+#include <unistd.h>
+
 #include "log.h"
+#include "lib/raop.h"
 #include "lib/stream.h"
 #include "lib/logger.h"
-#include <malloc.h>
-#include <cstring>
 #include "lib/dnssd.h"
+
 
 int start_server();
 int stop_server();
 
-int main(int argc, char *argv[]) {}
+static int running;
+
+static void
+signal_handler(int sig)
+{
+    switch (sig) {
+    case SIGINT:
+    case SIGTERM:
+        running = 0;
+        break;
+    }
+}
+
+static void
+init_signals(void)
+{
+    struct sigaction sigact;
+
+    sigact.sa_handler = signal_handler;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+    sigaction(SIGINT, &sigact, NULL);
+    sigaction(SIGTERM, &sigact, NULL);
+}
+
+int main(int argc, char *argv[]) {
+    init_signals();
+
+    if (start_server() != 0) {
+        return 1;
+    }
+
+    running = true;
+    while (running) {
+        sleep(1);
+    }
+
+    printf("Stopping...\n");
+    stop_server();
+}
 
 dnssd_t *dnssd;
 raop_t *raop;
 
 // Server callbacks
 extern "C" void
-audio_process(void *cls, pcm_data_struct *data)
+audio_process(void *cls, aac_decode_struct *data)
 {}
 
 extern "C" void

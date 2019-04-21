@@ -24,8 +24,6 @@
 #define RAOP_PACKET_LEN 32768
 
 typedef struct raop_rtp_s raop_rtp_t;
-typedef struct h264codec_s h264codec_t;
-
 
 raop_rtp_t *raop_rtp_init(logger_t *logger, raop_callbacks_t *callbacks, const unsigned char *remote, int remotelen,
                            const unsigned char *aeskey, const unsigned char *aesiv, const unsigned char *ecdh_secret, unsigned short timing_rport);

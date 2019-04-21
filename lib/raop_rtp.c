@@ -30,21 +30,6 @@
 
 #define NO_FLUSH (-42)
 
-struct h264codec_s {
-    unsigned char compatibility;
-    short lengthofPPS;
-    short lengthofSPS;
-    unsigned char level;
-    unsigned char numberOfPPS;
-    unsigned char* picture_parameter_set;
-    unsigned char profile_high;
-    unsigned char reserved3andSPS;
-    unsigned char reserved6andNAL;
-    unsigned char* sequence;
-    unsigned char version;
-
-};
-
 struct raop_rtp_s {
     logger_t *logger;
     raop_callbacks_t callbacks;
@@ -321,7 +306,6 @@ raop_rtp_process_events(raop_rtp_t *raop_rtp, void *cb_data)
 
     /* Handle flush if requested */
     if (flush != NO_FLUSH) {
-        raop_buffer_flush(raop_rtp->buffer, flush);
         if (raop_rtp->callbacks.audio_flush) {
             raop_rtp->callbacks.audio_flush(raop_rtp->callbacks.cls, cb_data);
         }
@@ -431,10 +415,7 @@ raop_rtp_thread_udp(void *arg)
     unsigned int packetlen;
     struct sockaddr_storage saddr;
     socklen_t saddrlen;
-    assert(raop_rtp);
-
-    void *cb_data = NULL;
-    
+    assert(raop_rtp);    
 
     while(1) {
         fd_set rfds;
@@ -481,9 +462,8 @@ raop_rtp_thread_udp(void *arg)
             logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp type_c 0x%02x, packetlen = %d", type_c, packetlen);
             if (type_c == 0x56) {
                 // Handling retransmitted packets, removing 4 bytes from the header
-                int ret = raop_buffer_queue(raop_rtp->buffer, packet+4, packetlen-4, &raop_rtp->callbacks);
-                assert(ret >= 0);
-
+                // The current audio processing design doesn't support retransmitted samples
+                logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp did not handle retransmitted sample");
             } else if (type_c == 0x54) {
                 // TODO: Temporarily not processed
 
@@ -504,24 +484,22 @@ raop_rtp_thread_udp(void *arg)
             // Len = 16 appears if there is no time
             if (packetlen >= 12) {
                 int no_resend = (raop_rtp->control_rport == 0);// false
-                int buf_ret;
-                const void *audiobuf;
+                const void *audiobuf = malloc(packetlen);
                 int audiobuflen;
-                unsigned int pts;
-                buf_ret = raop_buffer_queue(raop_rtp->buffer, packet, packetlen, &raop_rtp->callbacks);
-                assert(buf_ret >= 0);
-                /* Decode all frames in queue */
-                while ((audiobuf = raop_buffer_dequeue(raop_rtp->buffer, &audiobuflen, &pts, no_resend))) {
-                    pcm_data_struct pcm_data;
-                    pcm_data.data_len = 960;
-                    pcm_data.data = audiobuf;
-                    pcm_data.pts = pts;
-                    raop_rtp->callbacks.audio_process(raop_rtp->callbacks.cls, &pcm_data);
+                int decrypt_ret = raop_buffer_decrypt(raop_rtp->buffer, packet, audiobuf, packetlen, &audiobuflen);
+                assert(decrypt_ret >= 0);
+
+                if (decrypt_ret == 1) {
+                    aac_decode_struct aac_data;
+                    aac_data.data_len = audiobuflen;
+                    aac_data.data = audiobuf;
+                    raop_rtp->callbacks.audio_process(raop_rtp->callbacks.cls, &aac_data);
                 }
+
+                free(audiobuf);
+
                 /* Handle possible resend requests */
-                if (!no_resend) {
-                    raop_buffer_handle_resends(raop_rtp->buffer, raop_rtp_resend_callback, raop_rtp);
-                }
+                // Current design doesn't support resends
             }
 
         }
@@ -698,9 +676,6 @@ raop_rtp_stop(raop_rtp_t *raop_rtp)
     if (raop_rtp->csock != -1) closesocket(raop_rtp->csock);
     if (raop_rtp->tsock != -1) closesocket(raop_rtp->tsock);
     if (raop_rtp->dsock != -1) closesocket(raop_rtp->dsock);
-
-    /* Flush buffer into initial state */
-    raop_buffer_flush(raop_rtp->buffer, -1);
 
     /* Mark thread as joined */
     MUTEX_LOCK(raop_rtp->run_mutex);
