@@ -10,16 +10,6 @@ add_library( play-lib
         ${DIR_SRCS}
         )
 
-if(UNIX AND NOT APPLE)
-target_link_libraries( play-lib
-		dns_sd
-		pthread
-        crypto
-        curve25519
-        ed25519
-        playfair
-        plist )
-else()
 target_link_libraries( play-lib
 		pthread
         crypto
@@ -27,5 +17,9 @@ target_link_libraries( play-lib
         ed25519
         playfair
         plist )
+
+if( UNIX AND NOT APPLE )
+target_link_libraries( play-lib
+		dns_sd )
 endif()
         
