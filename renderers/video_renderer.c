@@ -165,11 +165,16 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
     logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", datalen);
 
     if (ilclient_remove_event(renderer->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {
+        logger_log(renderer->logger, LOGGER_DEBUG, "Port settings changed!!");
+
+        if (ilclient_setup_tunnel(&renderer->tunnels[0], 0, 0) != 0) {
+            logger_log(renderer->logger, LOGGER_ERR, "Could not setup decoder tunnel");
+        }
+
         ilclient_change_component_state(renderer->video_scheduler, OMX_StateExecuting);
 
-        logger_log(renderer->logger, LOGGER_DEBUG, "Port settings changed!!");
         if (ilclient_setup_tunnel(&renderer->tunnels[1], 0, 1000) != 0) {
-            logger_log(renderer->logger, LOGGER_ERR, "Could not setup renderer tunnel");
+            logger_log(renderer->logger, LOGGER_ERR, "Could not setup scheduler tunnel");
         }
 
         ilclient_change_component_state(renderer->video_renderer, OMX_StateExecuting);
