@@ -13,6 +13,7 @@
 
 #include "bcm_host.h"
 #include "ilclient.h"
+#include "../lib/threads.h"
 
 /* 
  * H264 renderer using OpenMAX for hardware accelerated decoding
@@ -234,7 +235,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
     while (offset < datalen) {
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
         if (buffer == NULL) {
-            sleep(10);
+            sleepms(10);
             continue;
         }
 
