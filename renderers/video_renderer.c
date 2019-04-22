@@ -28,16 +28,19 @@ struct video_renderer_s {
     ILCLIENT_T *client;
     COMPONENT_T *video_decoder;
     COMPONENT_T *video_renderer;
-    TUNNEL_T *decoder_tunnel;
+    COMPONENT_T *video_scheduler;
+    COMPONENT_T *clock;
 
-    COMPONENT_T *components[3];
-    TUNNEL_T tunnels[2];
+    COMPONENT_T *components[5];
+    TUNNEL_T tunnels[4];
 
     bool first_packet;
 };
 
 void video_renderer_destroy_decoder(video_renderer_t *renderer) {
-    ilclient_disable_tunnel(renderer->tunnels);
+    ilclient_disable_tunnel(&renderer->tunnels[0]);
+    ilclient_disable_tunnel(&renderer->tunnels[1]);
+    ilclient_disable_tunnel(&renderer->tunnels[2]);
     ilclient_disable_port_buffers(renderer->video_decoder, 130, NULL, NULL, NULL);
     ilclient_teardown_tunnels(renderer->tunnels);
 
@@ -81,10 +84,48 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     }
     renderer->components[1] = renderer->video_renderer;
 
-    set_tunnel(renderer->tunnels, renderer->video_decoder, 131, renderer->video_renderer, 90);
-    ilclient_change_component_state(renderer->video_decoder, OMX_StateIdle);
+    // Create clock
+    if (ilclient_create_component(renderer->client, &renderer->clock, "clock", 
+            ILCLIENT_DISABLE_ALL_PORTS) != 0) {
+        video_renderer_destroy_decoder(renderer);
+        return -14;
+    }
+    renderer->components[2] = renderer->clock;
+
+    // Setup clock
+    OMX_TIME_CONFIG_CLOCKSTATETYPE cstate;
+    memset(&cstate, 0, sizeof(cstate));
+    cstate.nSize = sizeof(cstate);
+    cstate.nVersion.nVersion = OMX_VERSION;
+    cstate.eState = OMX_TIME_ClockStateWaitingForStartTime;
+    cstate.nWaitMask = 1;
+    if (OMX_SetParameter(ILC_GET_HANDLE(renderer->clock), OMX_IndexConfigTimeClockState, &cstate) != OMX_ErrorNone) {
+        video_renderer_destroy_decoder(renderer);
+        return -13;
+    }
+
+    // Create video_scheduler
+    if (ilclient_create_component(renderer->client, &renderer->video_scheduler, "video_scheduler", 
+            ILCLIENT_DISABLE_ALL_PORTS) != 0) {
+        video_renderer_destroy_decoder(renderer);
+        return -14;
+    }
+    renderer->components[3] = renderer->video_scheduler;
+
+    // Create tunnels
+    set_tunnel(&renderer->tunnels[0], renderer->video_decoder, 131, renderer->video_scheduler, 10);
+    set_tunnel(&renderer->tunnels[1], renderer->video_scheduler, 11, renderer->video_renderer, 90);
+    set_tunnel(&renderer->tunnels[2], renderer->clock, 80, renderer->video_scheduler, 12);
+
+    // Setup clock
+    if (ilclient_setup_tunnel(&renderer->tunnels[2], 0, 0) != 0) {
+        video_renderer_destroy_decoder(renderer);
+        return -15;
+    }
+    ilclient_change_component_state(renderer->clock, OMX_StateExecuting);
 
     // Set decoder format
+    ilclient_change_component_state(renderer->video_decoder, OMX_StateIdle);
     OMX_VIDEO_PARAM_PORTFORMATTYPE format;
     memset(&format, 0, sizeof(OMX_VIDEO_PARAM_PORTFORMATTYPE));
     format.nSize = sizeof(OMX_VIDEO_PARAM_PORTFORMATTYPE);
@@ -124,8 +165,10 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
     logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", datalen);
 
     if (ilclient_remove_event(renderer->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {
+        ilclient_change_component_state(renderer->video_scheduler, OMX_StateExecuting);
+
         logger_log(renderer->logger, LOGGER_DEBUG, "Port settings changed!!");
-        if (ilclient_setup_tunnel(renderer->tunnels, 0, 0) != 0) {
+        if (ilclient_setup_tunnel(&renderer->tunnels[1], 0, 1000) != 0) {
             logger_log(renderer->logger, LOGGER_ERR, "Could not setup renderer tunnel");
         }
 
