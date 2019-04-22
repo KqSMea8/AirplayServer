@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include "bcm_host.h"
 #include "ilclient.h"
@@ -18,6 +19,8 @@
  * on the Raspberry Pi. 
  * Based on the hello_video sample from the Raspberry Pi project.
 */
+
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
 struct video_renderer_s {
     logger_t *logger;
@@ -120,12 +123,6 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
 
     logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", datalen);
 
-    OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
-    if (buffer == NULL) {
-        logger_log(renderer->logger, LOGGER_DEBUG, "Skipping video buffer due to busy decoder");
-        return;
-    }
-
     if (ilclient_remove_event(renderer->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Port settings changed!!");
         if (ilclient_setup_tunnel(renderer->tunnels, 0, 0) != 0) {
@@ -135,26 +132,30 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
         ilclient_change_component_state(renderer->video_renderer, OMX_StateExecuting);
     }
 
-    logger_log(renderer->logger, LOGGER_DEBUG, "Buffer size: %d bytes", buffer->nAllocLen);
+    int offset = 0;
+    while (offset < datalen) {
+        OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
+        if (buffer == NULL) {
+            sleep(10);
+            continue;
+        }
 
-    if (datalen > buffer->nAllocLen) {
-        logger_log(renderer->logger, LOGGER_DEBUG, "Skipping video buffer due to size");
-        return;
-    }
+        int chunk_size = MIN(datalen - offset, buffer->nAllocLen);
+        memcpy(buffer->pBuffer, data, chunk_size);
+        offset += chunk_size;
 
-    memcpy(buffer->pBuffer, data, datalen);
+        buffer->nFilledLen = chunk_size;
+        buffer->nOffset = 0;
+        if (renderer->first_packet) {
+            buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
+            renderer->first_packet = 0;
+        } else {
+            buffer->nFlags = OMX_BUFFERFLAG_TIME_UNKNOWN;
+        }
 
-    buffer->nFilledLen = datalen;
-    buffer->nOffset = 0;
-    if (renderer->first_packet) {
-       buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
-       renderer->first_packet = 0;
-    } else {
-       buffer->nFlags = OMX_BUFFERFLAG_TIME_UNKNOWN;
-    }
-
-    if (OMX_EmptyThisBuffer(ILC_GET_HANDLE(renderer->video_decoder), buffer) != OMX_ErrorNone) {
-       logger_log(renderer->logger, LOGGER_ERR, "Video decoder refused processing buffer");
+        if (OMX_EmptyThisBuffer(ILC_GET_HANDLE(renderer->video_decoder), buffer) != OMX_ErrorNone) {
+            logger_log(renderer->logger, LOGGER_ERR, "Video decoder refused processing buffer");
+        }
     }
 }
 
