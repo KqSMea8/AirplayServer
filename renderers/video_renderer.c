@@ -37,6 +37,39 @@ struct video_renderer_s {
     bool first_packet;
 };
 
+/* From: https://github.com/popcornmix/omxplayer/blob/master/omxplayer.cpp#L455
+ * Licensed under the GPLv2 */
+void video_renderer_init_background(){
+	// we create a 1x1 black pixel image that is added to display just behind video
+	DISPMANX_DISPLAY_HANDLE_T display;
+	DISPMANX_UPDATE_HANDLE_T update;
+	DISPMANX_RESOURCE_HANDLE_T resource;
+	uint32_t vc_image_ptr;
+	VC_IMAGE_TYPE_T type = VC_IMAGE_RGB565;
+	uint16_t image = 0x0000; // black
+	int layer = 0;
+
+	VC_RECT_T dst_rect, src_rect;
+
+	display = vc_dispmanx_display_open(0);
+
+	resource = vc_dispmanx_resource_create( type, 1 /*width*/, 1 /*height*/, &vc_image_ptr );
+
+	vc_dispmanx_rect_set( &dst_rect, 0, 0, 1, 1);
+
+	vc_dispmanx_resource_write_data( resource, type, sizeof(image), &image, &dst_rect );
+
+	vc_dispmanx_rect_set( &src_rect, 0, 0, 1<<16, 1<<16);
+	vc_dispmanx_rect_set( &dst_rect, 0, 0, 0, 0);
+
+	update = vc_dispmanx_update_start(0);
+
+	vc_dispmanx_element_add(update, display, layer, &dst_rect, resource, &src_rect,
+									DISPMANX_PROTECTION_NONE, NULL, NULL, DISPMANX_STEREOSCOPIC_MONO );
+
+	vc_dispmanx_update_submit_sync(update);
+}
+
 void video_renderer_destroy_decoder(video_renderer_t *renderer) {
     ilclient_disable_tunnel(&renderer->tunnels[0]);
     ilclient_disable_tunnel(&renderer->tunnels[1]);
@@ -58,6 +91,8 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     renderer->first_packet = true;
 
     bcm_host_init();
+
+    video_renderer_init_background();
 
     if ((renderer->client = ilclient_init()) == NULL) {
       return -3;
@@ -116,6 +151,21 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     set_tunnel(&renderer->tunnels[0], renderer->video_decoder, 131, renderer->video_scheduler, 10);
     set_tunnel(&renderer->tunnels[1], renderer->video_scheduler, 11, renderer->video_renderer, 90);
     set_tunnel(&renderer->tunnels[2], renderer->clock, 80, renderer->video_scheduler, 12);
+
+    // Setup renderer
+    OMX_CONFIG_DISPLAYREGIONTYPE display_region;
+    memset(&display_region, 0, sizeof(OMX_CONFIG_DISPLAYREGIONTYPE));
+    display_region.nSize = sizeof(OMX_CONFIG_DISPLAYREGIONTYPE);
+    display_region.nVersion.nVersion = OMX_VERSION;
+    display_region.nPortIndex = 90;
+    display_region.set = OMX_DISPLAY_SET_FULLSCREEN;
+    display_region.fullscreen = OMX_TRUE;
+
+    if (OMX_SetConfig(ilclient_get_handle(renderer->video_renderer), OMX_IndexConfigDisplayRegion, &display_region) != OMX_ErrorNone) {
+        logger_log(renderer->logger, LOGGER_DEBUG, "Could not set renderer to fullscreen");
+        video_renderer_destroy_decoder(renderer);
+        return -13;
+    }
 
     // Setup clock
     if (ilclient_setup_tunnel(&renderer->tunnels[2], 0, 0) != 0) {
