@@ -8,16 +8,17 @@
 #include "lib/stream.h"
 #include "lib/logger.h"
 #include "lib/dnssd.h"
-
+#include "renderers/video_renderer.h"
 
 int start_server();
 int stop_server();
 
 static int running;
+dnssd_t *dnssd;
+raop_t *raop;
+video_renderer_t *video_renderer;
 
-static void
-signal_handler(int sig)
-{
+static void signal_handler(int sig) {
     switch (sig) {
     case SIGINT:
     case SIGTERM:
@@ -26,9 +27,7 @@ signal_handler(int sig)
     }
 }
 
-static void
-init_signals(void)
-{
+static void init_signals(void) {
     struct sigaction sigact;
 
     sigact.sa_handler = signal_handler;
@@ -54,20 +53,14 @@ int main(int argc, char *argv[]) {
     stop_server();
 }
 
-dnssd_t *dnssd;
-raop_t *raop;
-
 // Server callbacks
-extern "C" void
-audio_process(void *cls, aac_decode_struct *data)
-{}
+extern "C" void audio_process(void *cls, aac_decode_struct *data) {}
 
-extern "C" void
-video_process(void *cls, h264_decode_struct *data)
-{}
+extern "C" void video_process(void *cls, h264_decode_struct *data) {
+    video_renderer_render_buffer(video_renderer, data->data, data->datalen);
+}
 
-extern "C" void
-log_callback(void *cls, int level, const char *msg) {
+extern "C" void log_callback(void *cls, int level, const char *msg) {
     switch (level) {
         case LOGGER_DEBUG: {
             LOGD("%s", msg);
@@ -91,6 +84,14 @@ log_callback(void *cls, int level, const char *msg) {
 }
 
 int start_server() {
+    logger_t *render_logger;
+    logger_set_log_callback(logger, log_callback, NULL);
+    logger_set_log_level(logger, LOGGER_DEBUG);
+    if ((video_renderer = video_renderer_init()) == NULL) {
+        LOGE("Could not init video renderer\n");
+        return -1;
+    }
+
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.audio_process = audio_process;
