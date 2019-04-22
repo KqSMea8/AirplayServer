@@ -118,6 +118,8 @@ video_renderer_t *video_renderer_init(logger_t *logger) {
 void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* data, int datalen) {
     if (datalen == 0) return;
 
+    logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", datalen);
+
     OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
     if (buffer == NULL) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Skipping video buffer due to busy decoder");
@@ -125,6 +127,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
     }
 
     if (ilclient_remove_event(renderer->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {
+        logger_log(renderer->logger, LOGGER_DEBUG, "Port settings changed!!");
         if (ilclient_setup_tunnel(renderer->tunnels, 0, 0) != 0) {
             logger_log(renderer->logger, LOGGER_ERR, "Could not setup renderer tunnel");
         }
@@ -132,9 +135,16 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
         ilclient_change_component_state(renderer->video_renderer, OMX_StateExecuting);
     }
 
-    assert(datalen < buffer->nAllocLen);
+    logger_log(renderer->logger, LOGGER_DEBUG, "Buffer size: %d bytes", buffer->nAllocLen);
+
+    if (datalen > buffer->nAllocLen) {
+        logger_log(renderer->logger, LOGGER_DEBUG, "Skipping video buffer due to size");
+        return;
+    }
+
     memcpy(buffer->pBuffer, data, datalen);
 
+    buffer->nFilledLen = datalen;
     buffer->nOffset = 0;
     if (renderer->first_packet) {
        buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
