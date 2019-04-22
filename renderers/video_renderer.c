@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "bcm_host.h"
 #include "ilclient.h"
@@ -18,22 +19,38 @@
  * Based on the hello_video sample from the Raspberry Pi project.
 */
 
-struct video_renderer_t {
+struct video_renderer_s {
     logger_t *logger;
 
-    ILCLIENT_T *client = NULL;
-    COMPONENT_T *video_decoder = NULL;
-    COMPONENT_T *video_renderer = NULL;
-    TUNNEL_T *decoder_tunnel = NULL;
-    OMX_VIDEO_PARAM_PORTFORMATTYPE format;
+    ILCLIENT_T *client;
+    COMPONENT_T *video_decoder;
+    COMPONENT_T *video_renderer;
+    TUNNEL_T *decoder_tunnel;
 
-    COMPONENT_T *components[3] = {NULL, NULL, NULL};
-    TUNNEL_T tunnels[2] = {NULL, NULL};
+    COMPONENT_T *components[3];
+    TUNNEL_T tunnels[2];
 
-    bool first_packet = true;
+    bool first_packet;
 };
 
+void video_renderer_destroy_decoder(video_renderer_t *renderer) {
+    ilclient_disable_tunnel(renderer->tunnels);
+    ilclient_disable_port_buffers(renderer->video_decoder, 130, NULL, NULL, NULL);
+    ilclient_teardown_tunnels(renderer->tunnels);
+
+    ilclient_state_transition(renderer->components, OMX_StateIdle);
+    ilclient_state_transition(renderer->components, OMX_StateLoaded);
+    ilclient_cleanup_components(renderer->components);
+
+    OMX_Deinit();
+    ilclient_destroy(renderer->client);
+}
+
 int video_renderer_init_decoder(video_renderer_t *renderer) {
+    memset(renderer->components, 0, sizeof(renderer->components));
+    memset(renderer->tunnels, 0, sizeof(renderer->tunnels));    
+    renderer->first_packet = true;
+
     bcm_host_init();
 
     if ((renderer->client = ilclient_init()) == NULL) {
@@ -41,12 +58,12 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     }
 
     if (OMX_Init() != OMX_ErrorNone) {
-        ilclient_destroy(client);
+        ilclient_destroy(renderer->client);
         return -4;
     }
 
     // Create video_decode
-    if (ilclient_create_component(client, &renderer->video_decoder, "video_decode", 
+    if (ilclient_create_component(renderer->client, &renderer->video_decoder, "video_decode", 
       ILCLIENT_DISABLE_ALL_PORTS | ILCLIENT_ENABLE_INPUT_BUFFERS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
@@ -54,17 +71,18 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     renderer->components[0] = renderer->video_decoder;
 
     // Create video_renderer
-    if (ilclient_create_component(client, &renderer->video_renderer, "video_render", 
+    if (ilclient_create_component(renderer->client, &renderer->video_renderer, "video_render", 
             ILCLIENT_DISABLE_ALL_PORTS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
     }
     renderer->components[1] = renderer->video_renderer;
 
-    set_tunnel(tunnel, renderer->video_decoder, 131, renderer->video_renderer, 90);
+    set_tunnel(renderer->tunnels, renderer->video_decoder, 131, renderer->video_renderer, 90);
     ilclient_change_component_state(renderer->video_decoder, OMX_StateIdle);
 
     // Set decoder format
+    OMX_VIDEO_PARAM_PORTFORMATTYPE format;
     memset(&format, 0, sizeof(OMX_VIDEO_PARAM_PORTFORMATTYPE));
     format.nSize = sizeof(OMX_VIDEO_PARAM_PORTFORMATTYPE);
     format.nVersion.nVersion = OMX_VERSION;
@@ -78,19 +96,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     }
 
     ilclient_change_component_state(renderer->video_decoder, OMX_StateExecuting);
-}
-
-void video_renderer_destroy_decoder(video_renderer_t *renderer) {
-    ilclient_disable_tunnel(renderer->tunnels);
-    ilclient_disable_port_buffers(renderer->video_decoder, 130, NULL, NULL, NULL);
-    ilclient_teardown_tunnels(renderer->tunnels);
-
-    ilclient_state_transition(renderer->components, OMX_StateIdle);
-    ilclient_state_transition(renderer->components, OMX_StateLoaded);
-    ilclient_cleanup_components(renderer->components);
-
-    OMX_Deinit();
-    ilclient_destroy(client);
+    return 1;
 }
 
 video_renderer_t *video_renderer_init(logger_t *logger) {
@@ -100,6 +106,12 @@ video_renderer_t *video_renderer_init(logger_t *logger) {
         return NULL;
     }
     renderer->logger = logger;
+
+    if (video_renderer_init_decoder(renderer) != 1) {
+        free(renderer);
+        renderer = NULL;
+    }
+
     return renderer;
 }
 
@@ -114,7 +126,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
 
     if (ilclient_remove_event(renderer->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {
         if (ilclient_setup_tunnel(renderer->tunnels, 0, 0) != 0) {
-            logger_log(renderer->logger, LOGGER_ERROR, "Could not setup renderer tunnel");
+            logger_log(renderer->logger, LOGGER_ERR, "Could not setup renderer tunnel");
         }
 
         ilclient_change_component_state(renderer->video_renderer, OMX_StateExecuting);
@@ -132,17 +144,17 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
     }
 
     if (OMX_EmptyThisBuffer(ILC_GET_HANDLE(renderer->video_decoder), buffer) != OMX_ErrorNone) {
-       logger_log(renderer->logger, LOGGER_ERROR, "Video decoder refused processing buffer");
+       logger_log(renderer->logger, LOGGER_ERR, "Video decoder refused processing buffer");
     }
 }
 
-void video_renderer_flush() {
+void video_renderer_flush(video_renderer_t *renderer) {
     ilclient_flush_tunnels(renderer->tunnels, 0);
 }
 
 void video_renderer_destroy(video_renderer_t *renderer) {
     if (renderer) {
-        video_renderer_flush();
+        video_renderer_flush(renderer);
         video_renderer_destroy_decoder(renderer);
         free(renderer);
     }

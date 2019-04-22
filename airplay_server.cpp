@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
 extern "C" void audio_process(void *cls, aac_decode_struct *data) {}
 
 extern "C" void video_process(void *cls, h264_decode_struct *data) {
-    video_renderer_render_buffer(video_renderer, data->data, data->datalen);
+    video_renderer_render_buffer(video_renderer, data->data, data->data_len);
 }
 
 extern "C" void log_callback(void *cls, int level, const char *msg) {
@@ -84,10 +84,10 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 }
 
 int start_server() {
-    logger_t *render_logger;
-    logger_set_log_callback(logger, log_callback, NULL);
-    logger_set_log_level(logger, LOGGER_DEBUG);
-    if ((video_renderer = video_renderer_init()) == NULL) {
+    logger_t *render_logger = logger_init();
+    logger_set_callback(render_logger, log_callback, NULL);
+    logger_set_level(render_logger, LOGGER_DEBUG);
+    if ((video_renderer = video_renderer_init(render_logger)) == NULL) {
         LOGE("Could not init video renderer\n");
         return -1;
     }

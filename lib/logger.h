@@ -15,6 +15,10 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Define syslog style log levels */
 #define LOGGER_EMERG       0       /* system is unusable */
 #define LOGGER_ALERT       1       /* action must be taken immediately */
@@ -36,5 +40,9 @@ void logger_set_level(logger_t *logger, int level);
 void logger_set_callback(logger_t *logger, logger_callback_t callback, void *cls);
 
 void logger_log(logger_t *logger, int level, const char *fmt, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -11,13 +11,21 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSTANDALONE -D__STDC_CONSTANT_MACROS -D__ST
 aux_source_directory(/opt/vc/src/hello_pi/libs/ilclient/ ilclient_src)
 set(DIR_SRCS ${ilclient_src})
 add_library( ilclient
-        STATIC
+        SHARED
         ${DIR_SRCS})
-target_link_libraries( ilclient brcmGLESv2 brcmEGL openmaxil bcm_host vcos vchiq_arm pthread rt m ) 
+
+find_library( BRCM_GLES_V2 brcmGLESv2 HINTS /opt/vc/lib/ )
+find_library( BRCM_EGL brcmEGL HINTS /opt/vc/lib/ )
+find_library( OPENMAXIL openmaxil HINTS /opt/vc/lib/ )
+find_library( BCM_HOST bcm_host HINTS /opt/vc/lib/ )
+find_library( VCOS vcos HINTS /opt/vc/lib/ )
+find_library( VCHIQ_ARM vchiq_arm HINTS /opt/vc/lib/ )
+target_link_libraries( ilclient ${BRCM_GLES_V2} ${BRCM_EGL} ${OPENMAXIL} 
+                       ${BCM_HOST} ${VCOS} ${VCHIQ_ARM} pthread rt m ) 
 
 aux_source_directory(. renderers_src)
 set(DIR_SRCS ${renderers_src})
 add_library( renderers
-        STATIC
+        SHARED
         ${DIR_SRCS})
-target_link_libraries ( renderers ilclient )
+target_link_libraries ( renderers ilclient play-lib )
