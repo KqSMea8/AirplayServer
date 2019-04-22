@@ -84,6 +84,17 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     }
     renderer->components[1] = renderer->video_renderer;
 
+    // Setup renderer
+    OMX_CONFIG_DISPLAYREGIONTYPE display_region;
+    memset(&display_region, 0, sizeof(OMX_CONFIG_DISPLAYREGIONTYPE));
+    display_region.nPortIndex = 90;
+    display_region.set = OMX_DISPLAY_SET_FULLSCREEN;
+    display_region.fullscreen = OMX_TRUE;
+    if (OMX_SetConfig(ilclient_get_handle(renderer->video_renderer), OMX_IndexConfigDisplayRegion, &display_region) != OMX_ErrorNone) {
+        video_renderer_destroy_decoder(renderer);
+        return -13;
+    }
+
     // Create clock
     if (ilclient_create_component(renderer->client, &renderer->clock, "clock", 
             ILCLIENT_DISABLE_ALL_PORTS) != 0) {
