@@ -27,7 +27,7 @@ raop_buffer_t *raop_buffer_init(logger_t *logger,
                                 const unsigned char *aesiv,
 								const unsigned char *ecdh_secret);
 int raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned char* output, 
-						unsigned short datalen, unsigned short *outputlen);
+						unsigned int datalen, unsigned int *outputlen);
 void raop_buffer_destroy(raop_buffer_t *raop_buffer);
 
 #endif

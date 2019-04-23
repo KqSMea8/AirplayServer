@@ -484,9 +484,9 @@ raop_rtp_thread_udp(void *arg)
             // Len = 16 appears if there is no time
             if (packetlen >= 12) {
                 int no_resend = (raop_rtp->control_rport == 0);// false
-                const void *audiobuf = malloc(packetlen);
-                int audiobuflen;
-                int decrypt_ret = raop_buffer_decrypt(raop_rtp->buffer, packet, audiobuf, packetlen, &audiobuflen);
+                void *audiobuf = malloc(packetlen);
+                unsigned int audiobuflen;
+                int decrypt_ret = raop_buffer_decrypt(raop_rtp->buffer, packet, (unsigned char*) audiobuf, packetlen, &audiobuflen);
                 assert(decrypt_ret >= 0);
 
                 if (decrypt_ret == 1) {

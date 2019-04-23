@@ -42,7 +42,7 @@ void aes_cbc_destroy(aes_ctx_t *ctx);
 typedef struct sha_ctx_s sha_ctx_t;
 sha_ctx_t *sha_init();
 void sha_update(sha_ctx_t *ctx, const uint8_t *in, int len);
-void sha_final(sha_ctx_t *ctx, uint8_t *out, int *len);
+void sha_final(sha_ctx_t *ctx, uint8_t *out, unsigned int *len);
 void sha_reset(sha_ctx_t *ctx);
 void sha_destroy(sha_ctx_t *ctx);
 

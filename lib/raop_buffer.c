@@ -117,7 +117,7 @@ static FILE* file_keyiv = NULL;
 
 
 int
-raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned char* output, unsigned short datalen, unsigned short *outputlen)
+raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned char* output, unsigned int datalen, unsigned int *outputlen)
 {
     assert(raop_buffer);
     int encryptedlen;
