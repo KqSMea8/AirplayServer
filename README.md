@@ -64,11 +64,10 @@ Your contributions are more than welcome!
 
 # Todo
 
-* Use OpenSSL for the elliptic curve crypto?
-* Properly handle timestamps for video samples
 * Add software decoder for AAC audio
-* Add command line flag for setting network name
-* Automatically find device MAC address
+* Properly handle timestamps for video samples?
+* Use OpenSSL for the elliptic curve crypto?
+* Add help command and print version
 * Bug: Sometimes cannot be stopped
 * Bug: Sometimes video playback halts
 * Bug: Cannot connect again once connection lost
