@@ -86,14 +86,14 @@ void video_renderer_destroy_decoder(video_renderer_t *renderer) {
     ilclient_destroy(renderer->client);
 }
 
-int video_renderer_init_decoder(video_renderer_t *renderer) {
+int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     memset(renderer->components, 0, sizeof(renderer->components));
     memset(renderer->tunnels, 0, sizeof(renderer->tunnels));    
     renderer->first_packet = true;
 
     bcm_host_init();
 
-    video_renderer_init_background();
+    if (background) video_renderer_init_background();
 
     if ((renderer->client = ilclient_init()) == NULL) {
       return -3;
@@ -194,7 +194,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     return 1;
 }
 
-video_renderer_t *video_renderer_init(logger_t *logger) {
+video_renderer_t *video_renderer_init(logger_t *logger, bool background) {
     video_renderer_t *renderer;
     renderer = calloc(1, sizeof(video_renderer_t));
     if (!renderer) {
@@ -202,7 +202,7 @@ video_renderer_t *video_renderer_init(logger_t *logger) {
     }
     renderer->logger = logger;
 
-    if (video_renderer_init_decoder(renderer) != 1) {
+    if (video_renderer_init_decoder(renderer, background) != 1) {
         free(renderer);
         renderer = NULL;
     }

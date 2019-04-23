@@ -10,6 +10,9 @@
 #include "lib/dnssd.h"
 #include "renderers/video_renderer.h"
 
+#define DEFAULT_NAME "RPiPlay"
+#define DEFAULT_SHOW_BACKGROUND true
+
 int start_server();
 int stop_server();
 
@@ -40,7 +43,22 @@ static void init_signals(void) {
 int main(int argc, char *argv[]) {
     init_signals();
 
-    if (start_server() != 0) {
+    bool show_background = DEFAULT_SHOW_BACKGROUND;
+    std::string server_name = DEFAULT_NAME;
+
+    // Parse arguments
+    for (int i = 1; i < argc; i++) {
+        std::string arg(argv[i]);
+        if (arg == "-n") {
+            if (i == argc - 1) continue;
+            server_name = std:.string(argv[++i]);
+        } else if (arg == "-b") {
+            show_background = !show_background;  
+        }
+    }
+
+
+    if (start_server(server_name, show_background) != 0) {
         return 1;
     }
 
@@ -83,11 +101,11 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 
 }
 
-int start_server() {
+int start_server(std::string name, bool show_background) {
     logger_t *render_logger = logger_init();
     logger_set_callback(render_logger, log_callback, NULL);
     logger_set_level(render_logger, LOGGER_DEBUG);
-    if ((video_renderer = video_renderer_init(render_logger)) == NULL) {
+    if ((video_renderer = video_renderer_init(render_logger, show_background)) == NULL) {
         LOGE("Could not init video renderer\n");
         return -1;
     }
@@ -124,8 +142,9 @@ int start_server() {
     }
 
     const char hwaddr[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
-    dnssd_register_raop(dnssd, "Test", port, hwaddr, sizeof(hwaddr), 0);
-    dnssd_register_airplay(dnssd, "Test", port + 1, hwaddr, sizeof(hwaddr));
+    dnssd_register_raop(dnssd, name.c_str(), port, hwaddr, sizeof(hwaddr), 0);
+    dnssd_register_airplay(dnssd, name.c_str(), port + 1, hwaddr, sizeof(hwaddr));
+
     return 0;
 }
 
