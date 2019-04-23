@@ -2,6 +2,9 @@
 #include <cstring>
 #include <signal.h>
 #include <unistd.h>
+#include <string>
+#include <vector>
+#include <fstream>
 
 #include "log.h"
 #include "lib/raop.h"
@@ -12,8 +15,9 @@
 
 #define DEFAULT_NAME "RPiPlay"
 #define DEFAULT_SHOW_BACKGROUND true
+#define DEFAULT_HW_ADDRESS { 0x48, 0x5d, 0x60, 0x7c, 0xee, 0x22 }
 
-int start_server();
+int start_server(std::vector<char> hw_addr, std::string name, bool show_background);
 int stop_server();
 
 static int running;
@@ -40,25 +44,51 @@ static void init_signals(void) {
     sigaction(SIGTERM, &sigact, NULL);
 }
 
+static int parse_hw_addr(std::string str, std::vector<char> &hw_addr) {
+    for (int i = 0; i < str.length(); i+=3) {
+        hw_addr.push_back((char) stol(str.substr(i), NULL, 16));
+    }
+    return 0;
+}
+
+std::string find_mac() {
+    std::ifstream iface_stream("/sys/class/net/eth0/address");
+    if (!iface_stream) {
+        iface_stream.open("/sys/class/net/wlan0/address");
+    }
+    if (!iface_stream) return "";
+
+    std::string mac_address;
+    iface_stream >> mac_address;
+    iface_stream.close();
+    return mac_address;
+}
+
 int main(int argc, char *argv[]) {
     init_signals();
 
     bool show_background = DEFAULT_SHOW_BACKGROUND;
     std::string server_name = DEFAULT_NAME;
+    std::vector<char> server_hw_addr = DEFAULT_HW_ADDRESS;
 
     // Parse arguments
     for (int i = 1; i < argc; i++) {
         std::string arg(argv[i]);
         if (arg == "-n") {
             if (i == argc - 1) continue;
-            server_name = std:.string(argv[++i]);
+            server_name = std::string(argv[++i]);
         } else if (arg == "-b") {
             show_background = !show_background;  
         }
     }
 
-
-    if (start_server(server_name, show_background) != 0) {
+    std::string mac_address = find_mac();
+    if (!mac_address.empty()) {
+        server_hw_addr.clear();
+        parse_hw_addr(mac_address, server_hw_addr);
+    }
+ 
+    if (start_server(server_hw_addr, server_name, show_background) != 0) {
         return 1;
     }
 
@@ -101,7 +131,7 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 
 }
 
-int start_server(std::string name, bool show_background) {
+int start_server(std::vector<char> hw_addr, std::string name, bool show_background) {
     logger_t *render_logger = logger_init();
     logger_set_callback(render_logger, log_callback, NULL);
     logger_set_level(render_logger, LOGGER_DEBUG);
@@ -141,10 +171,8 @@ int start_server(std::string name, bool show_background) {
         return -2;
     }
 
-    const char hwaddr[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
-    dnssd_register_raop(dnssd, name.c_str(), port, hwaddr, sizeof(hwaddr), 0);
-    dnssd_register_airplay(dnssd, name.c_str(), port + 1, hwaddr, sizeof(hwaddr));
-
+    dnssd_register_raop(dnssd, name.c_str(), port, hw_addr.data(), hw_addr.size(), 0);
+    dnssd_register_airplay(dnssd, name.c_str(), port + 1, hw_addr.data(), hw_addr.size());
     return 0;
 }
 
