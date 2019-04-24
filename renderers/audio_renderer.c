@@ -176,8 +176,6 @@ audio_renderer_t *audio_renderer_init(logger_t *logger, audio_device_t device) {
     return renderer;
 }
 
-#define DUMP_AUDIO
-
 #ifdef DUMP_AUDIO
 static FILE* file_pcm = NULL;
 #endif

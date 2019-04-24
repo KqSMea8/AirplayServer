@@ -514,7 +514,7 @@ raop_rtp_thread_udp(void *arg)
 
 // Start rtp service, three udp ports
 void
-raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_rport, unsigned short timing_rport,
+raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_rport,
                      unsigned short *control_lport, unsigned short *timing_lport, unsigned short *data_lport)
 {
     logger_log(raop_rtp->logger, LOGGER_INFO, "raop_rtp_start_audio");
@@ -530,7 +530,6 @@ raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_r
 
     /* Initialize ports and sockets */
     raop_rtp->control_rport = control_rport;
-    //raop_rtp->timing_rport = timing_rport;
     if (raop_rtp->remote_saddr.ss_family == AF_INET6) {
         use_ipv6 = 1;
     }

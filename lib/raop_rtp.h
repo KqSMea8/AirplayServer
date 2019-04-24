@@ -28,7 +28,7 @@ typedef struct raop_rtp_s raop_rtp_t;
 raop_rtp_t *raop_rtp_init(logger_t *logger, raop_callbacks_t *callbacks, const unsigned char *remote, int remotelen,
                            const unsigned char *aeskey, const unsigned char *aesiv, const unsigned char *ecdh_secret, unsigned short timing_rport);
 
-void raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_rport, unsigned short timing_rport,
+void raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_rport,
                      unsigned short *control_lport, unsigned short *timing_lport, unsigned short *data_lport);
 
 void raop_rtp_set_volume(raop_rtp_t *raop_rtp, float volume);
