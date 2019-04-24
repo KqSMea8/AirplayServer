@@ -150,12 +150,12 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
     }
 #endif
     
-    logger_log(raop_buffer->logger, LOGGER_DEBUG, "seqnum = %d payloadsize = %d", seqnum, payloadsize);
+    //logger_log(raop_buffer->logger, LOGGER_DEBUG, "seqnum = %d payloadsize = %d", seqnum, payloadsize);
 
     // We only process samples we received in order
     // If this design leads to a noticeable amount of artifacts, reintroduce a buffer system
     if (!raop_buffer->first_packet && seqnum_cmp(seqnum, raop_buffer->last_seqnum) <= 0) {
-        logger_log(raop_buffer->logger, LOGGER_DEBUG, "seqnum = %d last_seqnum = %d cmp = %hd", seqnum, raop_buffer->last_seqnum, seqnum_cmp(seqnum, raop_buffer->last_seqnum));
+        //logger_log(raop_buffer->logger, LOGGER_DEBUG, "seqnum = %d last_seqnum = %d cmp = %hd", seqnum, raop_buffer->last_seqnum, seqnum_cmp(seqnum, raop_buffer->last_seqnum));
     	return 0;
     }
 
