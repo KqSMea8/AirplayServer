@@ -7,10 +7,7 @@ The goal is to make it run smoothly even on a Raspberry Pi Zero.
 
 For now, only screen mirroring works. The GPU is used for decoding the h264
 video stream. Unfortunately, the Pi has no hardware acceleration for audio
-(AirPlay uses AAC), so a software decoder has to be integrated, which I 
-haven't tackled yet.
-It seems the Pi Zero is a bit too weak for running the current implementation
-at 30fps, so improving the video speed has priority for now. 
+(AirPlay uses AAC), so the FDK-AAC decoder is used for that.
 
 By using OpenSSL for AES decryption, I was able to speed up the decryption of
 video packets from up to 0.2 seconds to up to 0.007 seconds for large packets
@@ -39,8 +36,10 @@ make
 
 # Usage
 
-For now, there aren't many options. Just start the executable and a new AirPlay
-mirror target device will appear in the network.
+Start the airplay_server executable and an AirPlay mirror target device will appear in the network.
+At the moment, these options are implemented:
+-n Name: Specify the network name of the AirPlay server
+-b: Hide the black background behind the video
 
 # Authors
 
@@ -65,12 +64,10 @@ Your contributions are more than welcome!
 # Todo
 
 * Add license headers
-* Fix compiler warnings?
-
-* Add software decoder for AAC audio
+* Fix compiler warnings
+* Figure out why there are so many video artifacts
 * Properly handle timestamps for video samples?
 * Use OpenSSL for the elliptic curve crypto?
 * Add help command and print version
 * Bug: Sometimes cannot be stopped
 * Bug: Sometimes video playback halts
-* Bug: Cannot connect again once connection lost
