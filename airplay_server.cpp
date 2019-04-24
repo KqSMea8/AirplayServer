@@ -12,6 +12,7 @@
 #include "lib/logger.h"
 #include "lib/dnssd.h"
 #include "renderers/video_renderer.h"
+#include "renderers/audio_renderer.h"
 
 #define DEFAULT_NAME "RPiPlay"
 #define DEFAULT_SHOW_BACKGROUND true
@@ -24,6 +25,7 @@ static int running;
 dnssd_t *dnssd;
 raop_t *raop;
 video_renderer_t *video_renderer;
+audio_renderer_t *audio_renderer;
 
 static void signal_handler(int sig) {
     switch (sig) {
@@ -102,7 +104,9 @@ int main(int argc, char *argv[]) {
 }
 
 // Server callbacks
-extern "C" void audio_process(void *cls, aac_decode_struct *data) {}
+extern "C" void audio_process(void *cls, aac_decode_struct *data) {
+    audio_renderer_render_buffer(audio_renderer, data->data, data->data_len);
+}
 
 extern "C" void video_process(void *cls, h264_decode_struct *data) {
     video_renderer_render_buffer(video_renderer, data->data, data->data_len);
@@ -140,6 +144,11 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
         return -1;
     }
 
+    if ((audio_renderer = audio_renderer_init(render_logger, AUDIO_DEVICE_HDMI)) == NULL) {
+        LOGE("Could not init audio renderer\n");
+        return -1;
+    }
+
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.audio_process = audio_process;
@@ -173,6 +182,7 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
 
     dnssd_register_raop(dnssd, name.c_str(), port, hw_addr.data(), hw_addr.size(), 0);
     dnssd_register_airplay(dnssd, name.c_str(), port + 1, hw_addr.data(), hw_addr.size());
+
     return 0;
 }
 
@@ -180,5 +190,7 @@ int stop_server() {
     raop_destroy(raop);
     dnssd_unregister_raop(dnssd);
     dnssd_unregister_airplay(dnssd);
+    video_renderer_destroy(video_renderer);
+    audio_renderer_destroy(audio_renderer);
     return 0;
 }

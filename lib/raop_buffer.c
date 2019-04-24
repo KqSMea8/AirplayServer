@@ -16,24 +16,26 @@
 #include <string.h>
 #include <assert.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "raop_buffer.h"
 #include "raop_rtp.h"
 
-#include <stdint.h>
-#include <sha512.h>
 #include "crypto.h"
 #include "compat.h"
 #include "stream.h"
 
 struct raop_buffer_s {
     logger_t *logger;
-	/* Key and IV used for decryption */
-	unsigned char aeskey[RAOP_AESKEY_LEN];
-	unsigned char aesiv[RAOP_AESIV_LEN];
+    /* Key and IV used for decryption */
+    unsigned char aeskey[RAOP_AESKEY_LEN];
+    unsigned char aesiv[RAOP_AESIV_LEN];
 
-	// Last received sequence number
-	unsigned short last_seqnum;
+    // Last received sequence number
+    unsigned short last_seqnum;
+    bool first_packet;
 };
 
 void
@@ -70,18 +72,21 @@ raop_buffer_init(logger_t *logger,
                  const unsigned char *aesiv,
                  const unsigned char *ecdh_secret)
 {
-	raop_buffer_t *raop_buffer;
-	assert(aeskey);
+    raop_buffer_t *raop_buffer;
+    assert(aeskey);
     assert(aesiv);
     assert(ecdh_secret);
-	raop_buffer = calloc(1, sizeof(raop_buffer_t));
-	if (!raop_buffer) {
-		return NULL;
-	}
+    raop_buffer = calloc(1, sizeof(raop_buffer_t));
+    if (!raop_buffer) {
+        return NULL;
+    }
     raop_buffer->logger = logger;
     raop_buffer_init_key_iv(raop_buffer, aeskey, aesiv, ecdh_secret);
 
-	return raop_buffer;
+    raop_buffer->last_seqnum = 0;
+    raop_buffer->first_packet = true;    
+
+    return raop_buffer;
 }
 
 void
@@ -107,7 +112,7 @@ seqnum_cmp(unsigned short s1, unsigned short s2)
 	return (s1 - s2);
 }
 
-//#define DUMP_AUDIO
+#define DUMP_AUDIO
 
 #ifdef DUMP_AUDIO
 static FILE* file_aac = NULL;
@@ -123,9 +128,9 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
     int encryptedlen;
 #ifdef DUMP_AUDIO
     if (file_aac == NULL) {
-        file_aac = fopen("/sdcard/audio.aac", "wb");
-        file_source = fopen("/sdcard/audio.source", "wb");
-        file_keyiv = fopen("/sdcard/audio.keyiv", "wb");
+        file_aac = fopen("/home/pi/Airplay.aac", "wb");
+        file_source = fopen("/home/pi/Airplay.source", "wb");
+        file_keyiv = fopen("/home/pi/Airplay.keyiv", "wb");
     }
 #endif
 
@@ -144,17 +149,19 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
         fwrite(&data[12], payloadsize, 1, file_source);
     }
 #endif
-    //logger_log(raop_buffer->logger, LOGGER_DEBUG, "seqnum = %d payloadsize = %d", seqnum, payloadsize);
+    
+    logger_log(raop_buffer->logger, LOGGER_DEBUG, "seqnum = %d payloadsize = %d", seqnum, payloadsize);
 
     // We only process samples we received in order
     // If this design leads to a noticeable amount of artifacts, reintroduce a buffer system
-    if (seqnum_cmp(seqnum, raop_buffer->last_seqnum) <= 0) {
+    if (!raop_buffer->first_packet && seqnum_cmp(seqnum, raop_buffer->last_seqnum) <= 0) {
+        logger_log(raop_buffer->logger, LOGGER_DEBUG, "seqnum = %d last_seqnum = %d cmp = %hd", seqnum, raop_buffer->last_seqnum, seqnum_cmp(seqnum, raop_buffer->last_seqnum));
     	return 0;
     }
 
     encryptedlen = payloadsize/16*16;
     memset(output, 0, payloadsize);
-	// Need to be initialized internally
+    // Need to be initialized internally
     aes_ctx_t *aes_ctx_audio = aes_cbc_init(raop_buffer->aeskey, raop_buffer->aesiv, AES_DECRYPT);
     aes_cbc_decrypt(aes_ctx_audio, &data[12], output, encryptedlen);
     aes_cbc_destroy(aes_ctx_audio);
@@ -169,7 +176,8 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
     }
 #endif
 
-	raop_buffer->last_seqnum = seqnum;
+    raop_buffer->last_seqnum = seqnum;
+    raop_buffer->first_packet = false;
 
     return 1;
 }

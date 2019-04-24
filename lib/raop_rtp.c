@@ -486,10 +486,14 @@ raop_rtp_thread_udp(void *arg)
                 int no_resend = (raop_rtp->control_rport == 0);// false
                 void *audiobuf = malloc(packetlen);
                 unsigned int audiobuflen;
+
                 int decrypt_ret = raop_buffer_decrypt(raop_rtp->buffer, packet, (unsigned char*) audiobuf, packetlen, &audiobuflen);
                 assert(decrypt_ret >= 0);
 
+                logger_log(raop_rtp->logger, LOGGER_DEBUG, "Decrypt returned %d", decrypt_ret);
+
                 if (decrypt_ret == 1) {
+                    logger_log(raop_rtp->logger, LOGGER_DEBUG, "Calling audio cb");
                     aac_decode_struct aac_data;
                     aac_data.data_len = audiobuflen;
                     aac_data.data = audiobuf;

@@ -18,7 +18,7 @@ typedef struct {
 } h264_decode_struct;
 
 typedef struct {
-    unsigned short *data;
+    unsigned char *data;
     int data_len;
 } aac_decode_struct;
 

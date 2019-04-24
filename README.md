@@ -54,7 +54,7 @@ The code in this repository accumulated from various sources over time. Here is 
 * **Joyent, Inc and contributors**: Created an http library called [http-parser](https://github.com/nodejs/http-parser). Located at `lib/http_parser.(c|h)`. License: MIT
 * **Google, Inc and contributors**: Created an implementation of curve 25519 called [curve25519-donna](https://github.com/agl/curve25519-donna). Located in the `lib/curve25519` folder. License: 3-Clause BSD
 * **Team XBMC**: Managed to show a black background for OpenMAX video rendering. This code is used in the video renderer. License: GNU GPL
-* **Unclear origin**: An implementation of Ed25519 signatures. Depends on LibTomCrypt. Both: Located in `lib/ed25519`, License: Public Domain
+* **Orson Peters and contributors**: An implementation of [Ed25519](https://github.com/orlp/ed25519) signatures. Located in `lib/ed25519`, License: ZLIB; Depends on LibTomCrypt, License: Public Domain
 
 # Contributing
 
@@ -63,6 +63,9 @@ I'm not planning to regularly maintain this project. Instead, I'm hoping this pr
 Your contributions are more than welcome!
 
 # Todo
+
+* Add license headers
+* Fix compiler warnings?
 
 * Add software decoder for AAC audio
 * Properly handle timestamps for video samples?

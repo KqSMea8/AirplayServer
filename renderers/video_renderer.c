@@ -234,10 +234,6 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
     int offset = 0;
     while (offset < datalen) {
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
-        if (buffer == NULL) {
-            sleepms(10);
-            continue;
-        }
 
         int chunk_size = MIN(datalen - offset, buffer->nAllocLen);
         memcpy(buffer->pBuffer, data, chunk_size);
