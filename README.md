@@ -24,6 +24,7 @@ For details, refer to the [inofficial AirPlay specification](https://nto.github.
 # Building
 
 The following packages are required for building on Raspbian:
+
 * **cmake** (for the build system)
 * **libavahi-compat-libdnssd-dev** (for the bonjour registration)
 * **libssl-dev** (for crypto primitives)
