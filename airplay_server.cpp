@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
         sleep(1);
     }
 
-    LOGI("Stopping...", msg);
+    LOGI("Stopping...");
     stop_server();
 }
 
