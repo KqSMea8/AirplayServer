@@ -5,19 +5,13 @@ The goal is to make it run smoothly even on a Raspberry Pi Zero.
 
 # State
 
-Screen mirroring and audio works. The GPU is used for decoding the h264
+For now, only screen mirroring works. The GPU is used for decoding the h264
 video stream. Unfortunately, the Pi has no hardware acceleration for audio
 (AirPlay uses AAC), so the FDK-AAC decoder is used for that.
 
 By using OpenSSL for AES decryption, I was able to speed up the decryption of
 video packets from up to 0.2 seconds to up to 0.007 seconds for large packets
 (On the Pi Zero). Average is now more like 0.002 seconds.
-
-Please note RPiPlay might not be suitable for remote video playback, as it
-lacks a dedicated component for that: It seems like AirPlay on an AppleTV
-switches to a standard AirPlay connection when video playback starts, thus
-avoiding the reencoding of the video.
-For details, refer to the (inofficial AirPlay specification)[https://nto.github.io/AirPlay.html#screenmirroring].
 
 # Building
 
@@ -44,10 +38,8 @@ make
 
 Start the airplay_server executable and an AirPlay mirror target device will appear in the network.
 At the moment, these options are implemented:
--n name: Specify the network name of the AirPlay server
+-n Name: Specify the network name of the AirPlay server
 -b: Hide the black background behind the video
--a (hdmi|analog): Set audio output device
--v/-h: Displays short help and version information
 
 # Authors
 
@@ -56,8 +48,8 @@ The code in this repository accumulated from various sources over time. Here is 
 * **dsafa22**: Created an [AirPlay 2 mirroring server](https://github.com/dsafa22/AirplayServer) for Android based on ShairPlay. This project is basically a port of dsafa22's code to the Raspberry Pi, utilizing OpenMAX and OpenSSL for better performance on the Pi. All code in lib/ with a header crediting `Administrator` is dsafa22's work. License: unknown
 * **Juho Vähä-Herttua** and contributors: Created an AirPlay audio server called [ShairPlay](https://github.com/juhovh/shairplay), including support for Fairplay based on PlayFair. Most of the code in lib/ originally stems from this project. License: GNU LGPLv2.1+
 * **EstebanKubata**: Created a FairPlay library called [PlayFair](https://github.com/EstebanKubata/playfair). Located in the `lib/playfair` folder. License: GNU GPL
-* **Fraunhofer and contributors**: Developed a high-quality AAC decoder library called FDK-AAC. Used in the audio renderer. Code located in the `renderer/fdk-aac` folder. License: [View](https://github.com/mstorsjo/fdk-aac/blob/master/NOTICE)
 * **Jonathan Beck, Nikias Bassen** and contributors: Created a library for plist handling called [libplist](https://github.com/libimobiledevice/libplist). Located in the `lib/plist` folder. License: GNU LGPLv2.1+
+
 * **Joyent, Inc and contributors**: Created an http library called [http-parser](https://github.com/nodejs/http-parser). Located at `lib/http_parser.(c|h)`. License: MIT
 * **Google, Inc and contributors**: Created an implementation of curve 25519 called [curve25519-donna](https://github.com/agl/curve25519-donna). Located in the `lib/curve25519` folder. License: 3-Clause BSD
 * **Team XBMC**: Managed to show a black background for OpenMAX video rendering. This code is used in the video renderer. License: GNU GPL
@@ -73,6 +65,9 @@ Your contributions are more than welcome!
 
 * Add license headers
 * Fix compiler warnings
+* Figure out why there are so many video artifacts
+* Properly handle timestamps for video samples?
 * Use OpenSSL for the elliptic curve crypto?
+* Add help command and print version
 * Bug: Sometimes cannot be stopped
 * Bug: Sometimes video playback halts
