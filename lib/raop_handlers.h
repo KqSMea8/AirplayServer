@@ -292,7 +292,7 @@ raop_handler_setup(raop_conn_t *conn,
         plist_get_uint_val(time_note, &timing_rport);
 		logger_log(conn->raop->logger, LOGGER_DEBUG, "timing_rport = %llu", timing_rport);
         // ekey is 72 bytes, aeskey is 16 bytes
-        int ret = fairplay_decrypt(conn->fairplay, ekey, aeskey);
+        int ret = fairplay_decrypt(conn->fairplay, (unsigned char*) ekey, aeskey);
         logger_log(conn->raop->logger, LOGGER_DEBUG, "fairplay_decrypt ret = %d", ret);
 		unsigned char ecdh_secret[32];
         pairing_get_ecdh_secret_key(conn->pairing, ecdh_secret);
