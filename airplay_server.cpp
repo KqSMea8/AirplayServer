@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
         sleep(1);
     }
 
-    printf("Stopping...\n");
+    LOGI("Stopping...", msg);
     stop_server();
 }
 
@@ -184,14 +184,14 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     logger_set_callback(render_logger, log_callback, NULL);
     logger_set_level(render_logger, LOGGER_DEBUG);
     if ((video_renderer = video_renderer_init(render_logger, show_background)) == NULL) {
-        LOGE("Could not init video renderer\n");
+        LOGE("Could not init video renderer");
         return -1;
     }
 
     if (audio_device == AUDIO_DEVICE_NONE) {
-        LOGI("Audio disabled\n");
+        LOGI("Audio disabled");
     } else if ((audio_renderer = audio_renderer_init(render_logger, audio_device)) == NULL) {
-        LOGE("Could not init audio renderer\n");
+        LOGE("Could not init audio renderer");
         return -1;
     }
 
@@ -218,7 +218,7 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     int error;
     dnssd = dnssd_init(&error);
     if (error) {
-        LOGE("Could not initialize dnssd library!\n");
+        LOGE("Could not initialize dnssd library!");
         return -2;
     }
 

@@ -54,7 +54,7 @@ int audio_renderer_init_decoder(audio_renderer_t *renderer) {
     int ret = 0;
     renderer->audio_decoder = aacDecoder_Open(TT_MP4_RAW, 1);
     if (renderer->audio_decoder == NULL) {
-        logger_log(renderer->logger, LOGGER_ERR, "aacDecoder open faild!\n");
+        logger_log(renderer->logger, LOGGER_ERR, "aacDecoder open faild!");
         return -1;
     }
     /* ASC config binary data */
@@ -63,16 +63,16 @@ int audio_renderer_init_decoder(audio_renderer_t *renderer) {
     static UINT conf_len = sizeof(eld_conf);
     ret = aacDecoder_ConfigRaw(renderer->audio_decoder, conf, &conf_len);
     if (ret != AAC_DEC_OK) {
-        logger_log(renderer->logger, LOGGER_ERR, "Unable to set configRaw\n");
+        logger_log(renderer->logger, LOGGER_ERR, "Unable to set configRaw");
         return -2;
     }
     CStreamInfo *aac_stream_info = aacDecoder_GetStreamInfo(renderer->audio_decoder);
     if (aac_stream_info == NULL) {
-        logger_log(renderer->logger, LOGGER_ERR, "aacDecoder_GetStreamInfo failed!\n");
+        logger_log(renderer->logger, LOGGER_ERR, "aacDecoder_GetStreamInfo failed!");
         return -3;
     }
 
-    logger_log(renderer->logger, LOGGER_DEBUG, "> stream info: channel = %d\tsample_rate = %d\tframe_size = %d\taot = %d\tbitrate = %d\n",   \
+    logger_log(renderer->logger, LOGGER_DEBUG, "> stream info: channel = %d\tsample_rate = %d\tframe_size = %d\taot = %d\tbitrate = %d",   \
             aac_stream_info->channelConfig, aac_stream_info->aacSampleRate,
            aac_stream_info->aacSamplesPerFrame, aac_stream_info->aot, aac_stream_info->bitRate);
     return 1;
