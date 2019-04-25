@@ -23,6 +23,13 @@
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
+OMX_TICKS ToOMXTime(int64_t pts) {
+  OMX_TICKS ticks;
+  ticks.nLowPart = pts;
+  ticks.nHighPart = pts >> 32;
+  return ticks;
+}
+
 struct video_renderer_s {
     logger_t *logger;
 
@@ -135,7 +142,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     cstate.nVersion.nVersion = OMX_VERSION;
     cstate.eState = OMX_TIME_ClockStateWaitingForStartTime;
     cstate.nWaitMask = 1;
-    if (OMX_SetParameter(ILC_GET_HANDLE(renderer->clock), OMX_IndexConfigTimeClockState, &cstate) != OMX_ErrorNone) {
+    if (OMX_SetParameter(ilclient_get_handle(renderer->clock), OMX_IndexConfigTimeClockState, &cstate) != OMX_ErrorNone) {
         video_renderer_destroy_decoder(renderer);
         return -13;
     }
@@ -184,7 +191,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     format.nPortIndex = 130;
     format.eCompressionFormat = OMX_VIDEO_CodingAVC;
 
-    if (OMX_SetParameter(ILC_GET_HANDLE(renderer->video_decoder), OMX_IndexParamVideoPortFormat, &format) != OMX_ErrorNone ||
+    if (OMX_SetParameter(ilclient_get_handle(renderer->video_decoder), OMX_IndexParamVideoPortFormat, &format) != OMX_ErrorNone ||
             ilclient_enable_port_buffers(renderer->video_decoder, 130, NULL, NULL, NULL) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -15;
@@ -210,7 +217,7 @@ video_renderer_t *video_renderer_init(logger_t *logger, bool background) {
     return renderer;
 }
 
-void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* data, int datalen) {
+void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* data, int datalen, uint64_t pts) {
     if (datalen == 0) return;
 
     logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", datalen);
@@ -234,8 +241,10 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
     int offset = 0;
     while (offset < datalen) {
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
+        if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!", datalen);
 
         int chunk_size = MIN(datalen - offset, buffer->nAllocLen);
+        if (chunk_size < datalen) logger_log(renderer->logger, LOGGER_DEBUG, "Splitting buffer!", datalen);
         memcpy(buffer->pBuffer, data, chunk_size);
         offset += chunk_size;
 
@@ -243,12 +252,19 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
         buffer->nOffset = 0;
         if (renderer->first_packet) {
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
-            renderer->first_packet = 0;
+            renderer->first_packet = false;
         } else {
-            buffer->nFlags = OMX_BUFFERFLAG_TIME_UNKNOWN;
         }
 
-        if (OMX_EmptyThisBuffer(ILC_GET_HANDLE(renderer->video_decoder), buffer) != OMX_ErrorNone) {
+        buffer->nTimeStamp = ToOMXTime((uint64_t)(pts));
+        logger_log(renderer->logger, LOGGER_DEBUG, "Frame pts: %lld", pts);
+
+        if (offset == datalen && chunk_size < datalen) {
+        	buffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME;
+        	logger_log(renderer->logger, LOGGER_DEBUG, "Set end of frame");
+        }
+
+        if (OMX_EmptyThisBuffer(ilclient_get_handle(renderer->video_decoder), buffer) != OMX_ErrorNone) {
             logger_log(renderer->logger, LOGGER_ERR, "Video decoder refused processing buffer");
         }
     }

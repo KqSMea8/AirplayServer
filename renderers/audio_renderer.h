@@ -30,4 +30,4 @@ void audio_renderer_destroy(audio_renderer_t *renderer);
 }
 #endif
 
-#endif //VIDEO_RENDERER_H
+#endif //AUDIO_RENDERER_H

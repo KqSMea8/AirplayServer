@@ -200,7 +200,7 @@ raop_rtp_mirror_thread_time(void *arg)
     logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Exiting UDP raop_rtp_mirror_thread_time thread");
     return 0;
 }
-//#define DUMP_H264
+#define DUMP_H264
 
 #define RAOP_PACKET_LEN 32768
 /**
@@ -220,11 +220,10 @@ raop_rtp_mirror_thread(void *arg)
 
 #ifdef DUMP_H264
     // C decrypted
-    FILE* file = fopen("/sdcard/111.h264", "wb");
+    FILE* file = fopen("/home/pi/Airplay.h264", "wb");
     // Encrypted source file
-    FILE* file_source = fopen("/sdcard/111.source", "wb");
-
-    FILE* file_len = fopen("/sdcard/111.len", "wb");
+    FILE* file_source = fopen("/home/pi/Airplay.source", "wb");
+    FILE* file_len = fopen("/home/pi/Airplay.len", "wb");
 #endif
     while (1) {
         fd_set rfds;

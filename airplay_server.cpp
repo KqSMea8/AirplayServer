@@ -109,7 +109,7 @@ extern "C" void audio_process(void *cls, aac_decode_struct *data) {
 }
 
 extern "C" void video_process(void *cls, h264_decode_struct *data) {
-    video_renderer_render_buffer(video_renderer, data->data, data->data_len);
+    video_renderer_render_buffer(video_renderer, data->data, data->data_len, data->pts);
 }
 
 extern "C" void log_callback(void *cls, int level, const char *msg) {

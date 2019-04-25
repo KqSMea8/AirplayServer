@@ -22,7 +22,7 @@ extern "C" {
 typedef struct video_renderer_s video_renderer_t;
 
 video_renderer_t *video_renderer_init(logger_t *logger, bool background);
-void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* data, int datalen);
+void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* data, int datalen, uint64_t pts);
 void video_renderer_flush(video_renderer_t *renderer);
 void video_renderer_destroy(video_renderer_t *renderer);
 
