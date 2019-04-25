@@ -11,6 +11,9 @@ so the FDK-AAC decoder is used for that.
 Unfortunately, it seems the Pi Zero is too slow for decoding audio at
 a reasonable speed.
 
+In order to get audio decoding fast enough for the Pi Zero, we likely have
+to use a different AAC decoder library. 
+
 By using OpenSSL for AES decryption, I was able to speed up the decryption of
 video packets from up to 0.2 seconds to up to 0.007 seconds for large packets
 (On the Pi Zero). Average is now more like 0.002 seconds.
