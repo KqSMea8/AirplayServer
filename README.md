@@ -13,6 +13,14 @@ By using OpenSSL for AES decryption, I was able to speed up the decryption of
 video packets from up to 0.2 seconds to up to 0.007 seconds for large packets
 (On the Pi Zero). Average is now more like 0.002 seconds.
 
+There still are some playback issues. Have a look at the TODO list below.
+
+Please note RPiPlay might not be suitable for remote video playback, as it
+lacks a dedicated component for that: It seems like AirPlay on an AppleTV
+switches to a standard AirPlay connection when video playback starts, thus
+avoiding the re-encoding of the video.
+For details, refer to the [inofficial AirPlay specification](https://nto.github.io/AirPlay.html#screenmirroring).
+
 # Building
 
 The following packages are required for building on Raspbian:
@@ -38,15 +46,21 @@ make
 
 Start the airplay_server executable and an AirPlay mirror target device will appear in the network.
 At the moment, these options are implemented:
--n Name: Specify the network name of the AirPlay server
--b: Hide the black background behind the video
+
+**-n name**: Specify the network name of the AirPlay server
+
+**-b**: Hide the black background behind the video
+
+**-a (hdmi|analog)**: Set audio output device
+
+**-v/-h**: Displays short help and version information
 
 # Authors
 
 The code in this repository accumulated from various sources over time. Here is my attempt at listing the various authors and the components they created:
 
-* **dsafa22**: Created an [AirPlay 2 mirroring server](https://github.com/dsafa22/AirplayServer) for Android based on ShairPlay. This project is basically a port of dsafa22's code to the Raspberry Pi, utilizing OpenMAX and OpenSSL for better performance on the Pi. All code in lib/ with a header crediting `Administrator` is dsafa22's work. License: unknown
-* **Juho Vähä-Herttua** and contributors: Created an AirPlay audio server called [ShairPlay](https://github.com/juhovh/shairplay), including support for Fairplay based on PlayFair. Most of the code in lib/ originally stems from this project. License: GNU LGPLv2.1+
+* **dsafa22**: Created an [AirPlay 2 mirroring server](https://github.com/dsafa22/AirplayServer) for Android based on ShairPlay. This project is basically a port of dsafa22's code to the Raspberry Pi, utilizing OpenMAX and OpenSSL for better performance on the Pi. All code in `lib/` with a header crediting `Administrator` is dsafa22's work. License: unknown
+* **Juho Vähä-Herttua** and contributors: Created an AirPlay audio server called [ShairPlay](https://github.com/juhovh/shairplay), including support for Fairplay based on PlayFair. Most of the code in `lib/` originally stems from this project. License: GNU LGPLv2.1+
 * **EstebanKubata**: Created a FairPlay library called [PlayFair](https://github.com/EstebanKubata/playfair). Located in the `lib/playfair` folder. License: GNU GPL
 * **Jonathan Beck, Nikias Bassen** and contributors: Created a library for plist handling called [libplist](https://github.com/libimobiledevice/libplist). Located in the `lib/plist` folder. License: GNU LGPLv2.1+
 
