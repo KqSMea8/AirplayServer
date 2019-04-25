@@ -63,10 +63,6 @@ Your contributions are more than welcome!
 
 # Todo
 
-* Add license headers
-* Fix compiler warnings
-* Figure out why there are so many video artifacts
-* Properly handle timestamps for video samples?
 * Use OpenSSL for the elliptic curve crypto?
 * Add help command and print version
 * Bug: Sometimes cannot be stopped

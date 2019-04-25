@@ -1,3 +1,22 @@
+/**
+ * RPiPlay - An open-source AirPlay mirroring server for Raspberry Pi
+ * Copyright (C) 2019 Florian Draschbacher
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
+ */
+
 #include <stddef.h>
 #include <cstring>
 #include <signal.h>
@@ -192,11 +211,7 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     int error;
     dnssd = dnssd_init(&error);
     if (error) {
-        LOGE("ERROR: Could not initialize dnssd library!\n");
-        LOGE("------------------------------------------\n");
-        LOGE("You could try the following resolutions based on your OS:\n");
-        LOGE("Windows: Try installing http://support.apple.com/kb/DL999\n");
-        LOGE("Debian/Ubuntu: Try installing libavahi-compat-libdnssd-dev package\n");
+        LOGE("Could not initialize dnssd library!\n");
         return -2;
     }
 
