@@ -14,11 +14,14 @@
 #include "renderers/video_renderer.h"
 #include "renderers/audio_renderer.h"
 
+#define VERSION "1.0"
+
 #define DEFAULT_NAME "RPiPlay"
 #define DEFAULT_SHOW_BACKGROUND true
+#define DEFAULT_AUDIO_DEVICE AUDIO_DEVICE_HDMI
 #define DEFAULT_HW_ADDRESS { 0x48, 0x5d, 0x60, 0x7c, 0xee, 0x22 }
 
-int start_server(std::vector<char> hw_addr, std::string name, bool show_background);
+int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device);
 int stop_server();
 
 static int running;
@@ -66,12 +69,23 @@ std::string find_mac() {
     return mac_address;
 }
 
+void print_info(char* name) {
+    printf("RPiPlay %s: An open-source AirPlay mirroring server for Raspberry Pi\n", VERSION);
+    printf("Usage: %s [-b] [-n name] [-a (hdmi|analog)]\n", name);
+    printf("Options:\n");
+    printf("-n name           Specify the network name of the AirPlay server\n");
+    printf("-b                Hide the black background behind the video\n");
+    printf("-a (hdmi|analog)  Set audio output device\n");
+    printf("-v/-h             Displays this help and version information\n");
+}
+
 int main(int argc, char *argv[]) {
     init_signals();
 
     bool show_background = DEFAULT_SHOW_BACKGROUND;
     std::string server_name = DEFAULT_NAME;
     std::vector<char> server_hw_addr = DEFAULT_HW_ADDRESS;
+    audio_device_t audio_device = DEFAULT_AUDIO_DEVICE;
 
     // Parse arguments
     for (int i = 1; i < argc; i++) {
@@ -81,6 +95,12 @@ int main(int argc, char *argv[]) {
             server_name = std::string(argv[++i]);
         } else if (arg == "-b") {
             show_background = !show_background;  
+        } else if (arg == "-a") {
+            if (i == argc - 1) continue;
+            audio_device = std::string(argv[++i]) == "hdmi" ? AUDIO_DEVICE_HDMI : AUDIO_DEVICE_ANALOG;
+        } else if (arg == "-h" || arg == "-v") {
+            print_info(argv[0]);
+            exit(0);
         }
     }
 
@@ -90,7 +110,7 @@ int main(int argc, char *argv[]) {
         parse_hw_addr(mac_address, server_hw_addr);
     }
  
-    if (start_server(server_hw_addr, server_name, show_background) != 0) {
+    if (start_server(server_hw_addr, server_name, show_background, audio_device) != 0) {
         return 1;
     }
 
@@ -135,7 +155,7 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 
 }
 
-int start_server(std::vector<char> hw_addr, std::string name, bool show_background) {
+int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device) {
     logger_t *render_logger = logger_init();
     logger_set_callback(render_logger, log_callback, NULL);
     logger_set_level(render_logger, LOGGER_DEBUG);
@@ -144,7 +164,7 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
         return -1;
     }
 
-    if ((audio_renderer = audio_renderer_init(render_logger, AUDIO_DEVICE_HDMI)) == NULL) {
+    if ((audio_renderer = audio_renderer_init(render_logger, audio_device)) == NULL) {
         LOGE("Could not init audio renderer\n");
         return -1;
     }

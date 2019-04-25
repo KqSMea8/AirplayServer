@@ -23,13 +23,6 @@
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
-OMX_TICKS ToOMXTime(int64_t pts) {
-  OMX_TICKS ticks;
-  ticks.nLowPart = pts;
-  ticks.nHighPart = pts >> 32;
-  return ticks;
-}
-
 struct video_renderer_s {
     logger_t *logger;
 
@@ -244,24 +237,26 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
         if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!", datalen);
 
         int chunk_size = MIN(datalen - offset, buffer->nAllocLen);
-        if (chunk_size < datalen) logger_log(renderer->logger, LOGGER_DEBUG, "Splitting buffer!", datalen);
-        memcpy(buffer->pBuffer, data, chunk_size);
+        memcpy(buffer->pBuffer, data + offset, chunk_size);
+
         offset += chunk_size;
 
         buffer->nFilledLen = chunk_size;
         buffer->nOffset = 0;
+
+		OMX_TICKS timestamp;
+		timestamp.nLowPart = pts;
+		timestamp.nHighPart = pts >> 32;
+        buffer->nTimeStamp = timestamp;
+
         if (renderer->first_packet) {
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
             renderer->first_packet = false;
-        } else {
         }
 
-        buffer->nTimeStamp = ToOMXTime((uint64_t)(pts));
-        logger_log(renderer->logger, LOGGER_DEBUG, "Frame pts: %lld", pts);
-
+        // Mark the last buffer if we had to split the data
         if (offset == datalen && chunk_size < datalen) {
         	buffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME;
-        	logger_log(renderer->logger, LOGGER_DEBUG, "Set end of frame");
         }
 
         if (OMX_EmptyThisBuffer(ilclient_get_handle(renderer->video_decoder), buffer) != OMX_ErrorNone) {
