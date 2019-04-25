@@ -5,9 +5,11 @@ The goal is to make it run smoothly even on a Raspberry Pi Zero.
 
 # State
 
-For now, only screen mirroring works. The GPU is used for decoding the h264
-video stream. Unfortunately, the Pi has no hardware acceleration for audio
-(AirPlay uses AAC), so the FDK-AAC decoder is used for that.
+Screen mirroring and audio works. The GPU is used for decoding the h264
+video stream. The Pi has no hardware acceleration for audio (AirPlay uses AAC), 
+so the FDK-AAC decoder is used for that.
+Unfortunately, it seems the Pi Zero is too slow for decoding audio at
+a reasonable speed.
 
 By using OpenSSL for AES decryption, I was able to speed up the decryption of
 video packets from up to 0.2 seconds to up to 0.007 seconds for large packets
@@ -52,7 +54,7 @@ At the moment, these options are implemented:
 
 **-b**: Hide the black background behind the video
 
-**-a (hdmi|analog)**: Set audio output device
+**-a (hdmi|analog|off)**: Set audio output device
 
 **-v/-h**: Displays short help and version information
 

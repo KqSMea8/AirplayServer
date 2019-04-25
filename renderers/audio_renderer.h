@@ -32,7 +32,7 @@ extern "C" {
 #include <stdbool.h>
 #include "../lib/logger.h"
 
-typedef enum audio_device_e { AUDIO_DEVICE_HDMI, AUDIO_DEVICE_ANALOG } audio_device_t;
+typedef enum audio_device_e { AUDIO_DEVICE_HDMI, AUDIO_DEVICE_ANALOG, AUDIO_DEVICE_NONE } audio_device_t;
 
 typedef struct audio_renderer_s audio_renderer_t;
 

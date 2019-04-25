@@ -43,11 +43,11 @@
 int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device);
 int stop_server();
 
-static int running;
-dnssd_t *dnssd;
-raop_t *raop;
-video_renderer_t *video_renderer;
-audio_renderer_t *audio_renderer;
+static bool running = false;
+static dnssd_t *dnssd = NULL;
+static raop_t *raop = NULL;
+static video_renderer_t *video_renderer = NULL;
+static audio_renderer_t *audio_renderer = NULL;
 
 static void signal_handler(int sig) {
     switch (sig) {
@@ -92,10 +92,10 @@ void print_info(char* name) {
     printf("RPiPlay %s: An open-source AirPlay mirroring server for Raspberry Pi\n", VERSION);
     printf("Usage: %s [-b] [-n name] [-a (hdmi|analog)]\n", name);
     printf("Options:\n");
-    printf("-n name           Specify the network name of the AirPlay server\n");
-    printf("-b                Hide the black background behind the video\n");
-    printf("-a (hdmi|analog)  Set audio output device\n");
-    printf("-v/-h             Displays this help and version information\n");
+    printf("-n name               Specify the network name of the AirPlay server\n");
+    printf("-b                    Hide the black background behind the video\n");
+    printf("-a (hdmi|analog|off)  Set audio output device\n");
+    printf("-v/-h                 Displays this help and version information\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -116,7 +116,10 @@ int main(int argc, char *argv[]) {
             show_background = !show_background;  
         } else if (arg == "-a") {
             if (i == argc - 1) continue;
-            audio_device = std::string(argv[++i]) == "hdmi" ? AUDIO_DEVICE_HDMI : AUDIO_DEVICE_ANALOG;
+            std::string audio_device_name(argv[++i]);
+            audio_device = audio_device_name == "hdmi" ? AUDIO_DEVICE_NONE : 
+                           audio_device_name == "analog" ? AUDIO_DEVICE_ANALOG:
+                           AUDIO_DEVICE_NONE;
         } else if (arg == "-h" || arg == "-v") {
             print_info(argv[0]);
             exit(0);
@@ -144,7 +147,9 @@ int main(int argc, char *argv[]) {
 
 // Server callbacks
 extern "C" void audio_process(void *cls, aac_decode_struct *data) {
-    audio_renderer_render_buffer(audio_renderer, data->data, data->data_len);
+    if (audio_renderer != NULL) {
+        audio_renderer_render_buffer(audio_renderer, data->data, data->data_len);
+    }
 }
 
 extern "C" void video_process(void *cls, h264_decode_struct *data) {
@@ -183,7 +188,9 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
         return -1;
     }
 
-    if ((audio_renderer = audio_renderer_init(render_logger, audio_device)) == NULL) {
+    if (audio_device == AUDIO_DEVICE_NONE) {
+        LOGI("Audio disabled\n");
+    } else if ((audio_renderer = audio_renderer_init(render_logger, audio_device)) == NULL) {
         LOGE("Could not init audio renderer\n");
         return -1;
     }
