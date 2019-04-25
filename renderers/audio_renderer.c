@@ -104,8 +104,6 @@ int audio_renderer_init_renderer(audio_renderer_t *renderer, audio_device_t devi
     port_format.nSize = sizeof(OMX_AUDIO_PARAM_PORTFORMATTYPE);
     port_format.nVersion.nVersion = OMX_VERSION;
     port_format.nPortIndex = 100;
-    // TODO: Remove this?
-    OMX_GetParameter(ilclient_get_handle(renderer->audio_renderer), OMX_IndexParamAudioPortFormat, &port_format);
     port_format.eEncoding = OMX_AUDIO_CodingPCM;
     if (OMX_SetParameter(ilclient_get_handle(renderer->audio_renderer), OMX_IndexParamAudioPortFormat, &port_format) != OMX_ErrorNone) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Could not set pcm format");
