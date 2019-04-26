@@ -247,16 +247,8 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
     }
 
     int offset = 0;
-    while (offset < datalen) {
-        struct timeval tval_before, tval_after, tval_result;
-        gettimeofday(&tval_before, NULL);
-        
+    while (offset < datalen) {       
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
-        
-        gettimeofday(&tval_after, NULL);
-        timersub(&tval_after, &tval_before, &tval_result);
-        printf("Getting buffer took: %ld.%06ld\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
-
         if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!", datalen);
 
         int chunk_size = MIN(datalen - offset, buffer->nAllocLen);
