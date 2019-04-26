@@ -225,8 +225,6 @@ raop_handler_options(raop_conn_t *conn,
 	http_response_add_header(response, "Public", "SETUP, RECORD, PAUSE, FLUSH, TEARDOWN, OPTIONS, GET_PARAMETER, SET_PARAMETER");
 }
 
-static int setup = 0;
-
 static void
 raop_handler_setup(raop_conn_t *conn,
                    http_request_t *request, http_response_t *response,
@@ -399,6 +397,8 @@ raop_handler_setup(raop_conn_t *conn,
 
 		logger_log(conn->raop->logger, LOGGER_INFO, "dport = %d, tport = %d, cport = %d", dport, tport, cport);
 		conn->setup_status = SETUP_AUDIO_PORT;
+    } else {
+    	logger_log(conn->raop->logger, LOGGER_INFO, "Unhandled setup request with status SETUP_AUDIO_PORT");
     }
 
 }

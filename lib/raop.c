@@ -197,14 +197,17 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response)
 			logger_log(conn->raop->logger, LOGGER_WARNING, "RAOP not initialized at FLUSH");
 		}
 	} else if (!strcmp(method, "TEARDOWN")) {
-		http_response_add_header(*response, "Connection", "close");
-		if (conn->raop_rtp) {
+		logger_log(conn->raop->logger, LOGGER_INFO, "Received teardown, but not closing connection!");
+		//http_response_add_header(*response, "Connection", "close");
+		if (conn->setup_status == SETUP_AUDIO_PORT) {
 			/* Destroy our RTP session */
-			raop_rtp_destroy(conn->raop_rtp);
-			conn->raop_rtp = NULL;
-		}
-        if (conn->raop_rtp_mirror) {
-            /* Destroy our mirror session */
+			// Make sure the next SETUP sets up a new audio RTP session
+			raop_rtp_stop(conn->raop_rtp);
+			conn->setup_status = SETUP_MIRROR_PORT;
+		} else if (conn->raop_rtp_mirror) {
+            /* Destroy our sessions */
+            raop_rtp_destroy(conn->raop_rtp);
+            conn->raop_rtp = NULL;
             raop_rtp_mirror_destroy(conn->raop_rtp_mirror);
             conn->raop_rtp_mirror = NULL;
         }
