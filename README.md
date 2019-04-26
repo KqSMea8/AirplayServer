@@ -82,8 +82,9 @@ I'm not planning to regularly maintain this project. Instead, I'm hoping this pr
 Your contributions are more than welcome!
 
 # Todo
-
+* Properly handle timestamps and ntp
+  => Smooth playback, low latency
 * Use OpenSSL for the elliptic curve crypto?
-* Add help command and print version
+* Frequent playback stalls
+  => Likely caused by network (at least we stall while checking sockets)    
 * Bug: Sometimes cannot be stopped
-* Bug: Frequent playback stalls
