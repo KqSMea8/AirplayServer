@@ -86,4 +86,4 @@ Your contributions are more than welcome!
 * Use OpenSSL for the elliptic curve crypto?
 * Add help command and print version
 * Bug: Sometimes cannot be stopped
-* Bug: Sometimes video playback halts
+* Bug: Frequent playback stalls
