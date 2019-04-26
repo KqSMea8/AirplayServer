@@ -239,6 +239,8 @@ raop_rtp_mirror_thread(void *arg)
         tv.tv_sec = 0;
         tv.tv_usec = 5000;
 
+        logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Checking rtp mirror sockets");
+
         /* Get the correct nfds value and set rfds */
         FD_ZERO(&rfds);
         if (stream_fd == -1) {
@@ -529,7 +531,7 @@ void raop_rtp_mirror_stop(raop_rtp_mirror_t *raop_rtp_mirror) {
 
     THREAD_JOIN(raop_rtp_mirror->thread_time);
 
-    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Stopped mirror time thread");
+    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Stopping mirror time thread");
 
     if (raop_rtp_mirror->mirror_data_sock != -1) closesocket(raop_rtp_mirror->mirror_data_sock);
     if (raop_rtp_mirror->mirror_time_sock != -1) closesocket(raop_rtp_mirror->mirror_time_sock);
