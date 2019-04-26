@@ -3,8 +3,8 @@
 
 #define RAOP_TXTVERS "1"
 #define RAOP_CH "2"             /* Audio channels: 2 */
-#define RAOP_CN "0,1,2,3"           /* Audio codec: PCM, ALAC, ?, ? */
-#define RAOP_ET "0,3,5"           /* Encryption type: none, ?, ? */
+#define RAOP_CN "0,1,2,3"           /* Audio codec: PCM, ALAC, AAC, AAC ELD */
+#define RAOP_ET "0,3,5"           /* Encryption type: None, FairPlay, FairPlay SAPv2.5 */
 #define RAOP_VV "2"
 #define RAOP_FT "0x5A7FFFF7,0x1E"
 #define RAOP_RHD "5.6.0.0"

@@ -521,11 +521,16 @@ void raop_rtp_mirror_stop(raop_rtp_mirror_t *raop_rtp_mirror) {
     /* Join the thread */
     THREAD_JOIN(raop_rtp_mirror->thread_mirror);
 
+    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Stopping mirror time thread");
+
     MUTEX_LOCK(raop_rtp_mirror->time_mutex);
     COND_SIGNAL(raop_rtp_mirror->time_cond);
     MUTEX_UNLOCK(raop_rtp_mirror->time_mutex);
 
     THREAD_JOIN(raop_rtp_mirror->thread_time);
+
+    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Stopped mirror time thread");
+
     if (raop_rtp_mirror->mirror_data_sock != -1) closesocket(raop_rtp_mirror->mirror_data_sock);
     if (raop_rtp_mirror->mirror_time_sock != -1) closesocket(raop_rtp_mirror->mirror_time_sock);
 
