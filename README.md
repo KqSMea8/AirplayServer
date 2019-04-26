@@ -86,5 +86,7 @@ Your contributions are more than welcome!
   => Smooth playback, low latency
 * Use OpenSSL for the elliptic curve crypto?
 * Frequent playback stalls
-  => Likely caused by network (at least we stall while checking sockets)    
+  => Probably caused by slow disk IO while dumping to files
+  => Probably caused by network (at least we stall while checking sockets)
 * Bug: Sometimes cannot be stopped
+  => Likely deadlock in audio time thread
