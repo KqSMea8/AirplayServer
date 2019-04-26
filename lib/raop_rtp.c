@@ -667,12 +667,16 @@ raop_rtp_stop(raop_rtp_t *raop_rtp)
     /* Join the thread */
     THREAD_JOIN(raop_rtp->thread);
 
+    logger_log(raop_rtp->logger, LOGGER_DEBUG, "Stopping audio time thread");
+
     MUTEX_LOCK(raop_rtp->time_mutex);
     COND_SIGNAL(raop_rtp->time_cond);
     MUTEX_UNLOCK(raop_rtp->time_mutex);
 
     THREAD_JOIN(raop_rtp->thread_time);
     
+    logger_log(raop_rtp->logger, LOGGER_DEBUG, "Stopped audio time thread");
+
     if (raop_rtp->csock != -1) closesocket(raop_rtp->csock);
     if (raop_rtp->tsock != -1) closesocket(raop_rtp->tsock);
     if (raop_rtp->dsock != -1) closesocket(raop_rtp->dsock);
