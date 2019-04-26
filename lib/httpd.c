@@ -207,7 +207,7 @@ httpd_thread(void *arg)
 		tv.tv_sec = 1;
 		tv.tv_usec = 5000;
 
-		logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Checking httpd sockets");
+		logger_log(httpd->logger, LOGGER_DEBUG, "Checking httpd sockets");
 
 		/* Get the correct nfds value and set rfds */
 		FD_ZERO(&rfds);
