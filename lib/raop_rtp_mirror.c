@@ -239,8 +239,6 @@ raop_rtp_mirror_thread(void *arg)
         tv.tv_sec = 0;
         tv.tv_usec = 5000;
 
-        logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Checking rtp mirror sockets");
-
         /* Get the correct nfds value and set rfds */
         FD_ZERO(&rfds);
         if (stream_fd == -1) {
