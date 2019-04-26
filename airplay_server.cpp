@@ -105,7 +105,7 @@ int start_server() {
     }
 
     raop_set_log_callback(raop, log_callback, NULL);
-    raop_set_log_level(raop, RAOP_LOG_ERR);
+    raop_set_log_level(raop, RAOP_LOG_DEBUG);
 
     unsigned short port = 0;
     raop_start(raop, &port);

@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.4.1)
 
-add_subdirectory(lib/crypto)
 add_subdirectory(lib/curve25519)
 add_subdirectory(lib/ed25519)
 add_subdirectory(lib/playfair)

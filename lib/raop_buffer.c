@@ -22,8 +22,7 @@
 
 #include <stdint.h>
 #include <sha512.h>
-#include "crypto/crypto.h"
-#include "aes.h"
+#include "crypto.h"
 #include "compat.h"
 #include "stream.h"
 
@@ -47,11 +46,13 @@ raop_buffer_init_key_iv(raop_buffer_t *raop_buffer,
     // Initialization key
     unsigned char eaeskey[64];
     memcpy(eaeskey, aeskey, 16);
-    sha512_context ctx;
-    sha512_init(&ctx);
-    sha512_update(&ctx, eaeskey, 16);
-    sha512_update(&ctx, ecdh_secret, 32);
-    sha512_final(&ctx, eaeskey);
+
+    sha_ctx_t *ctx = sha_init();
+    sha_update(ctx, eaeskey, 16);
+    sha_update(ctx, ecdh_secret, 32);
+    sha_final(ctx, eaeskey, NULL);
+    sha_destroy(ctx);
+    
     memcpy(raop_buffer->aeskey, eaeskey, 16);
     memcpy(raop_buffer->aesiv, aesiv, RAOP_AESIV_LEN);
 #ifdef DUMP_AUDIO
@@ -154,10 +155,10 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
     encryptedlen = payloadsize/16*16;
     memset(output, 0, payloadsize);
 	// Need to be initialized internally
-    AES_CTX aes_ctx_audio;
-	AES_set_key(&aes_ctx_audio, raop_buffer->aeskey, raop_buffer->aesiv, AES_MODE_128);
-	AES_convert_key(&aes_ctx_audio);
-    AES_cbc_decrypt(&aes_ctx_audio, &data[12], output, encryptedlen);
+    aes_ctx_t *aes_ctx_audio = aes_cbc_init(raop_buffer->aeskey, raop_buffer->aesiv, AES_DECRYPT);
+    aes_cbc_decrypt(aes_ctx_audio, &data[12], output, encryptedlen);
+    aes_cbc_destroy(aes_ctx_audio);
+
     memcpy(output+encryptedlen, &data[12+encryptedlen], payloadsize-encryptedlen);
     *outputlen = payloadsize;
 

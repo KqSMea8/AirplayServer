@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.4.1)
-include_directories(crypto curve25519 ed25519 playfair plist/plist )
+include_directories( curve25519 ed25519 playfair plist/plist )
 
 
 aux_source_directory(. play_src)
@@ -10,9 +10,11 @@ add_library( play-lib
         ${DIR_SRCS}
         )
 
+find_package(OpenSSL REQUIRED)
+
 target_link_libraries( play-lib
-		pthread
-        crypto
+        OpenSSL::Crypto
+	pthread
         curve25519
         ed25519
         playfair

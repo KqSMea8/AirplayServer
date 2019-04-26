@@ -2,6 +2,12 @@
 // Created by Florian Draschbacher on 2019/04/22
 //
 
+/* 
+ * H264 renderer using OpenMAX for hardware accelerated decoding
+ * on the Raspberry Pi. 
+ * Based on the hello_video sample from the Raspberry Pi project.
+*/
+
 #ifndef VIDEO_RENDERER_H
 #define VIDEO_RENDERER_H
 
@@ -13,7 +19,6 @@ extern "C" {
 #include "../lib/logger.h"
 
 typedef struct video_renderer_s video_renderer_t;
-
 
 video_renderer_t *video_renderer_init( logger_t *logger );
 void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* data, int datalen);

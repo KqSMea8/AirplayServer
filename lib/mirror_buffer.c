@@ -6,17 +6,18 @@
 #include "raop_rtp.h"
 #include "raop_rtp.h"
 #include <stdint.h>
-#include "crypto/crypto.h"
-#include "aes.h"
+#include "crypto.h"
 #include "compat.h"
-#include "ed25519/sha512.h"
 #include <math.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
+#include <stdio.h>
+
 //#define DUMP_KEI_IV
 struct mirror_buffer_s {
     logger_t *logger;
-    struct AES_ctx aes_ctx;
+    aes_ctx_t *aes_ctx;
     int nextDecryptCount;
     uint8_t og[16];
     /* AES key and IV */
@@ -28,13 +29,12 @@ struct mirror_buffer_s {
 void
 mirror_buffer_init_aes(mirror_buffer_t *mirror_buffer, uint64_t streamConnectionID)
 {
-    sha512_context ctx;
+    sha_ctx_t *ctx = sha_init();
     unsigned char eaeskey[64] = {};
     memcpy(eaeskey, mirror_buffer->aeskey, 16);
-    sha512_init(&ctx);
-    sha512_update(&ctx, eaeskey, 16);
-    sha512_update(&ctx, mirror_buffer->ecdh_secret, 32);
-    sha512_final(&ctx, eaeskey);
+    sha_update(ctx, eaeskey, 16);
+    sha_update(ctx, mirror_buffer->ecdh_secret, 32);
+    sha_final(ctx, eaeskey, NULL);
 
     unsigned char hash1[64];
     unsigned char hash2[64];
@@ -44,15 +44,16 @@ mirror_buffer_init_aes(mirror_buffer_t *mirror_buffer, uint64_t streamConnection
     unsigned char sivall[255];
     sprintf(skeyall, "%s%llu", skey, streamConnectionID);
     sprintf(sivall, "%s%llu", siv, streamConnectionID);
-    sha512_init(&ctx);
-    sha512_update(&ctx, skeyall, strlen(skeyall));
-    sha512_update(&ctx, eaeskey, 16);
-    sha512_final(&ctx, hash1);
+    sha_reset(ctx);
+    sha_update(ctx, skeyall, strlen(skeyall));
+    sha_update(ctx, eaeskey, 16);
+    sha_final(ctx, hash1, NULL);
 
-    sha512_init(&ctx);
-    sha512_update(&ctx, sivall, strlen(sivall));
-    sha512_update(&ctx, eaeskey, 16);
-    sha512_final(&ctx, hash2);
+    sha_reset(ctx);
+    sha_update(ctx, sivall, strlen(sivall));
+    sha_update(ctx, eaeskey, 16);
+    sha_final(ctx, hash2, NULL);
+    sha_destroy(ctx);
 
     unsigned char decrypt_aeskey[16];
     unsigned char decrypt_aesiv[16];
@@ -65,7 +66,7 @@ mirror_buffer_init_aes(mirror_buffer_t *mirror_buffer, uint64_t streamConnection
     fclose(keyfile);
 #endif
     // Need to be initialized externally
-    AES_init_ctx_iv(&mirror_buffer->aes_ctx, decrypt_aeskey, decrypt_aesiv);
+    mirror_buffer->aes_ctx = aes_ctr_init(decrypt_aeskey, decrypt_aesiv);
     mirror_buffer->nextDecryptCount = 0;
 }
 
@@ -99,7 +100,9 @@ void mirror_buffer_decrypt(mirror_buffer_t *mirror_buffer, unsigned char* input,
     // Handling encrypted bytes
     int encryptlen = ((inputLen - mirror_buffer->nextDecryptCount) / 16) * 16;
     // Aes decryption
-    AES_CTR_xcrypt_buffer(&mirror_buffer->aes_ctx, input + mirror_buffer->nextDecryptCount, encryptlen);
+    aes_ctr_start_fresh_block(mirror_buffer->aes_ctx);
+    aes_ctr_decrypt(mirror_buffer->aes_ctx, input + mirror_buffer->nextDecryptCount, 
+        input + mirror_buffer->nextDecryptCount, encryptlen);
     // Copy to output
     memcpy(output + mirror_buffer->nextDecryptCount, input + mirror_buffer->nextDecryptCount, encryptlen);
     int outputlength = mirror_buffer->nextDecryptCount + encryptlen;
@@ -110,7 +113,7 @@ void mirror_buffer_decrypt(mirror_buffer_t *mirror_buffer, unsigned char* input,
     if (restlen > 0) {
         memset(mirror_buffer->og, 0, 16);
         memcpy(mirror_buffer->og, input + reststart, restlen);
-        AES_CTR_xcrypt_buffer(&mirror_buffer->aes_ctx, mirror_buffer->og, 16);
+        aes_ctr_decrypt(mirror_buffer->aes_ctx, mirror_buffer->og, mirror_buffer->og, 16);
         for (int j = 0; j < restlen; j++) {
             output[reststart + j] = mirror_buffer->og[j];
         }
@@ -123,6 +126,7 @@ void
 mirror_buffer_destroy(mirror_buffer_t *mirror_buffer)
 {
     if (mirror_buffer) {
+        aes_ctr_destroy(mirror_buffer->aes_ctx);
         free(mirror_buffer);
     }
 }

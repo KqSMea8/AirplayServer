@@ -19,8 +19,7 @@
 #include "pairing.h"
 #include "curve25519/curve25519.h"
 #include "ed25519/ed25519.h"
-#include "ed25519/sha512.h"
-#include "aes_ctr.h"
+#include "crypto.h"
 
 #define SALT_KEY "Pair-Verify-AES-Key"
 #define SALT_IV "Pair-Verify-AES-IV"
@@ -52,16 +51,17 @@ struct pairing_session_s {
 static int
 derive_key_internal(pairing_session_t *session, const unsigned char *salt, unsigned int saltlen, unsigned char *key, unsigned int keylen)
 {
-	sha512_context ctx;
 	unsigned char hash[64];
 
 	if (keylen > sizeof(hash)) {
 		return -1;
 	}
-	sha512_init(&ctx);
-	sha512_update(&ctx, salt, saltlen);
-	sha512_update(&ctx, session->ecdh_secret, 32);
-	sha512_final(&ctx, hash);
+
+    sha_ctx_t *ctx = sha_init();
+	sha_update(ctx, salt, saltlen);
+	sha_update(ctx, session->ecdh_secret, 32);
+	sha_final(ctx, hash, NULL);
+	sha_destroy(ctx);
 
 	memcpy(key, hash, keylen);
 	return 0;
@@ -187,7 +187,7 @@ pairing_session_get_signature(pairing_session_t *session, unsigned char signatur
 	unsigned char sig_msg[64];
 	unsigned char key[16];
 	unsigned char iv[16];
-	AES_CTR_CTX aes_ctx;
+	aes_ctx_t *aes_ctx;
 
 	assert(session);
 
@@ -204,8 +204,11 @@ pairing_session_get_signature(pairing_session_t *session, unsigned char signatur
 	/* Then encrypt the result with keys derived from the shared secret */
 	derive_key_internal(session, (const unsigned char *) SALT_KEY, strlen(SALT_KEY), key, sizeof(key));
 	derive_key_internal(session, (const unsigned char *) SALT_IV, strlen(SALT_IV), iv, sizeof(key));
-	AES_ctr_set_key(&aes_ctx, key, iv, AES_MODE_128);
-	AES_ctr_encrypt(&aes_ctx, signature, signature, 64);
+  
+	aes_ctx = aes_ctr_init(key, iv);
+	aes_ctr_encrypt(aes_ctx, signature, signature, 64);
+	aes_ctr_destroy(aes_ctx);
+
 	return 0;
 }
 
@@ -216,7 +219,7 @@ pairing_session_finish(pairing_session_t *session, const unsigned char signature
 	unsigned char sig_msg[64];
 	unsigned char key[16];
 	unsigned char iv[16];
-	AES_CTR_CTX aes_ctx;
+	aes_ctx_t *aes_ctx;
 
 	assert(session);
 
@@ -227,10 +230,12 @@ pairing_session_finish(pairing_session_t *session, const unsigned char signature
 	/* First decrypt the signature with keys derived from the shared secret */
 	derive_key_internal(session, (const unsigned char *) SALT_KEY, strlen(SALT_KEY), key, sizeof(key));
 	derive_key_internal(session, (const unsigned char *) SALT_IV, strlen(SALT_IV), iv, sizeof(key));
-	AES_ctr_set_key(&aes_ctx, key, iv, AES_MODE_128);
+
+	aes_ctx = aes_ctr_init(key, iv);
 	/* One fake round for the initial handshake encryption */
-	AES_ctr_encrypt(&aes_ctx, sig_buffer, sig_buffer, 64);
-	AES_ctr_encrypt(&aes_ctx, signature, sig_buffer, 64);
+	aes_ctr_encrypt(aes_ctx, sig_buffer, sig_buffer, 64);
+	aes_ctr_encrypt(aes_ctx, signature, sig_buffer, 64);
+	aes_ctr_destroy(aes_ctx);
 
 	/* Then verify the signature with public ECDH keys of both parties */
 	memcpy(&sig_msg[0], session->ecdh_theirs, 32);
