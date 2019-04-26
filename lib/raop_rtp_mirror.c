@@ -200,7 +200,7 @@ raop_rtp_mirror_thread_time(void *arg)
     logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Exiting UDP raop_rtp_mirror_thread_time thread");
     return 0;
 }
-#define DUMP_H264
+//#define DUMP_H264
 
 #define RAOP_PACKET_LEN 32768
 /**
