@@ -248,6 +248,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
 
     int offset = 0;
     while (offset < datalen) {
+        logger_log(renderer->logger, LOGGER_DEBUG, "Waiting for render buffer");
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
         if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!", datalen);
 
