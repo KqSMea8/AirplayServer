@@ -56,34 +56,34 @@ struct video_renderer_s {
 /* From: https://github.com/popcornmix/omxplayer/blob/master/omxplayer.cpp#L455
  * Licensed under the GPLv2 */
 void video_renderer_init_background(){
-	// we create a 1x1 black pixel image that is added to display just behind video
-	DISPMANX_DISPLAY_HANDLE_T display;
-	DISPMANX_UPDATE_HANDLE_T update;
-	DISPMANX_RESOURCE_HANDLE_T resource;
-	uint32_t vc_image_ptr;
-	VC_IMAGE_TYPE_T type = VC_IMAGE_RGB565;
-	uint16_t image = 0x0000; // black
-	int layer = 0;
+    // we create a 1x1 black pixel image that is added to display just behind video
+    DISPMANX_DISPLAY_HANDLE_T display;
+    DISPMANX_UPDATE_HANDLE_T update;
+    DISPMANX_RESOURCE_HANDLE_T resource;
+    uint32_t vc_image_ptr;
+    VC_IMAGE_TYPE_T type = VC_IMAGE_RGB565;
+    uint16_t image = 0x0000; // black
+    int layer = 0;
 
-	VC_RECT_T dst_rect, src_rect;
+    VC_RECT_T dst_rect, src_rect;
 
-	display = vc_dispmanx_display_open(0);
+    display = vc_dispmanx_display_open(0);
 
-	resource = vc_dispmanx_resource_create( type, 1 /*width*/, 1 /*height*/, &vc_image_ptr );
+    resource = vc_dispmanx_resource_create(type, 1 /*width*/, 1 /*height*/, &vc_image_ptr);
 
-	vc_dispmanx_rect_set( &dst_rect, 0, 0, 1, 1);
+    vc_dispmanx_rect_set(&dst_rect, 0, 0, 1, 1);
 
-	vc_dispmanx_resource_write_data( resource, type, sizeof(image), &image, &dst_rect );
+    vc_dispmanx_resource_write_data(resource, type, sizeof(image), &image, &dst_rect);
 
-	vc_dispmanx_rect_set( &src_rect, 0, 0, 1<<16, 1<<16);
-	vc_dispmanx_rect_set( &dst_rect, 0, 0, 0, 0);
+    vc_dispmanx_rect_set(&src_rect, 0, 0, 1<<16, 1<<16);
+    vc_dispmanx_rect_set(&dst_rect, 0, 0, 0, 0);
 
-	update = vc_dispmanx_update_start(0);
+    update = vc_dispmanx_update_start(0);
 
-	vc_dispmanx_element_add(update, display, layer, &dst_rect, resource, &src_rect,
-									DISPMANX_PROTECTION_NONE, NULL, NULL, DISPMANX_STEREOSCOPIC_MONO );
+    vc_dispmanx_element_add(update, display, layer, &dst_rect, resource, &src_rect,
+        DISPMANX_PROTECTION_NONE, NULL, NULL, DISPMANX_STEREOSCOPIC_MONO);
 
-	vc_dispmanx_update_submit_sync(update);
+    vc_dispmanx_update_submit_sync(update);
 }
 
 void video_renderer_destroy_decoder(video_renderer_t *renderer) {
@@ -103,7 +103,7 @@ void video_renderer_destroy_decoder(video_renderer_t *renderer) {
 
 int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     memset(renderer->components, 0, sizeof(renderer->components));
-    memset(renderer->tunnels, 0, sizeof(renderer->tunnels));    
+    memset(renderer->tunnels, 0, sizeof(renderer->tunnels));
     renderer->first_packet = true;
 
     bcm_host_init();
@@ -120,7 +120,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     }
 
     // Create video_decode
-    if (ilclient_create_component(renderer->client, &renderer->video_decoder, "video_decode", 
+    if (ilclient_create_component(renderer->client, &renderer->video_decoder, "video_decode",
       ILCLIENT_DISABLE_ALL_PORTS | ILCLIENT_ENABLE_INPUT_BUFFERS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
@@ -128,7 +128,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     renderer->components[0] = renderer->video_decoder;
 
     // Create video_renderer
-    if (ilclient_create_component(renderer->client, &renderer->video_renderer, "video_render", 
+    if (ilclient_create_component(renderer->client, &renderer->video_renderer, "video_render",
             ILCLIENT_DISABLE_ALL_PORTS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
@@ -136,7 +136,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     renderer->components[1] = renderer->video_renderer;
 
     // Create clock
-    if (ilclient_create_component(renderer->client, &renderer->clock, "clock", 
+    if (ilclient_create_component(renderer->client, &renderer->clock, "clock",
             ILCLIENT_DISABLE_ALL_PORTS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
@@ -156,7 +156,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     }
 
     // Create video_scheduler
-    if (ilclient_create_component(renderer->client, &renderer->video_scheduler, "video_scheduler", 
+    if (ilclient_create_component(renderer->client, &renderer->video_scheduler, "video_scheduler",
             ILCLIENT_DISABLE_ALL_PORTS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
@@ -247,7 +247,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
     }
 
     int offset = 0;
-    while (offset < datalen) {       
+    while (offset < datalen) {
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
         if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!", datalen);
 
@@ -259,10 +259,11 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
         buffer->nFilledLen = chunk_size;
         buffer->nOffset = 0;
 
-		OMX_TICKS timestamp;
-		timestamp.nLowPart = pts;
-		timestamp.nHighPart = pts >> 32;
-        buffer->nTimeStamp = timestamp;
+        OMX_TICKS timestamp;
+        timestamp.nLowPart = pts;
+        timestamp.nHighPart = pts >> 32;
+        // Just adds latency while the time calculations in raop_rtp_mirror are not fully implemented
+        //buffer->nTimeStamp = timestamp;
 
         if (renderer->first_packet) {
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
@@ -270,8 +271,8 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
         }
 
         // Mark the last buffer if we had to split the data
-        if (offset == datalen && chunk_size < datalen) {
-        	buffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME;
+        if (chunk_size < datalen && offset == datalen) {
+            buffer->nFlags = OMX_BUFFERFLAG_ENDOFNAL;
         }
 
         if (OMX_EmptyThisBuffer(ilclient_get_handle(renderer->video_decoder), buffer) != OMX_ErrorNone) {
