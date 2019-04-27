@@ -18,6 +18,9 @@ By using OpenSSL for AES decryption, I was able to speed up the decryption of
 video packets from up to 0.2 seconds to up to 0.007 seconds for large packets
 (On the Pi Zero). Average is now more like 0.002 seconds.
 
+If you are seeing long playback pauses, make sure the DUMP flags are not active.
+Disk IO can slow down the whole program when dumping to files.
+
 There still are some playback issues. Have a look at the TODO list below.
 
 Please note RPiPlay might not be suitable for remote video playback, as it
@@ -85,8 +88,5 @@ Your contributions are more than welcome!
 * Properly handle timestamps and ntp
   => Smooth playback, low latency
 * Use OpenSSL for the elliptic curve crypto?
-* Frequent playback stalls
-  => Probably caused by slow disk IO while dumping to files
-  => Probably caused by network (at least we stall while checking sockets)
 * Bug: Sometimes cannot be stopped
   => Likely deadlock in audio time thread
