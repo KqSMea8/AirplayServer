@@ -29,6 +29,7 @@
 #include "logger.h"
 #include "compat.h"
 #include "raop_rtp_mirror.h"
+#include "raop_ntp.h"
 
 struct raop_s {
 	/* Callbacks for audio and video */
@@ -53,6 +54,7 @@ typedef enum {
 
 struct raop_conn_s {
 	raop_t *raop;
+	raop_ntp_t *raop_ntp;
 	raop_rtp_t *raop_rtp;
 	raop_rtp_mirror_t *raop_rtp_mirror;
 	fairplay_t *fairplay;
@@ -84,7 +86,8 @@ conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remot
 	}
 	conn->raop = raop;
 	conn->raop_rtp = NULL;
-	conn->fairplay = fairplay_init(raop->logger);
+    conn->raop_ntp = NULL;
+    conn->fairplay = fairplay_init(raop->logger);
     conn->setup_status = SETUP_INITIAL;
     
 	if (!conn->fairplay) {
@@ -228,6 +231,9 @@ conn_destroy(void *ptr)
 {
 	raop_conn_t *conn = ptr;
 
+	if (conn->raop_ntp) {
+	    raop_ntp_destroy(conn->raop_ntp);
+	}
 	if (conn->raop_rtp) {
 		/* This is done in case TEARDOWN was not called */
 		raop_rtp_destroy(conn->raop_rtp);

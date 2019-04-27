@@ -33,11 +33,11 @@
 struct raop_rtp_s {
     logger_t *logger;
     raop_callbacks_t callbacks;
+    raop_ntp_t *ntp;
 
     /* Buffer to handle all resends */
     raop_buffer_t *buffer;
 
-    mirror_buffer_t *mirror;
     /* Remote address as sockaddr */
     struct sockaddr_storage remote_saddr;
     socklen_t remote_saddr_len;
@@ -62,22 +62,17 @@ struct raop_rtp_s {
 
     int flush;
     thread_handle_t thread;
-    thread_handle_t thread_time;
     mutex_handle_t run_mutex;
-    mutex_handle_t time_mutex;
-    cond_handle_t time_cond;
     /* MUTEX LOCKED VARIABLES END */
 
     /* Remote control and timing ports */
     unsigned short control_rport;
-    unsigned short timing_rport;
 
-    /* Sockets for control, timing and data */
-    int csock, tsock, dsock;
+    /* Sockets for control and data */
+    int csock, dsock;
 
     /* Local control, timing and data ports */
     unsigned short control_lport;
-    unsigned short timing_lport;
     unsigned short data_lport;
 
     /* Initialized after the first control packet */
@@ -114,8 +109,8 @@ raop_rtp_parse_remote(raop_rtp_t *raop_rtp, const unsigned char *remote, int rem
 }
 
 raop_rtp_t *
-raop_rtp_init(logger_t *logger, raop_callbacks_t *callbacks, const unsigned char *remote, int remotelen,
-               const unsigned char *aeskey, const unsigned char *aesiv, const unsigned char *ecdh_secret, unsigned short timing_rport)
+raop_rtp_init(logger_t *logger, raop_callbacks_t *callbacks, raop_ntp_t *ntp, const unsigned char *remote, int remotelen,
+               const unsigned char *aeskey, const unsigned char *aesiv, const unsigned char *ecdh_secret)
 {
     raop_rtp_t *raop_rtp;
 
@@ -127,7 +122,7 @@ raop_rtp_init(logger_t *logger, raop_callbacks_t *callbacks, const unsigned char
         return NULL;
     }
     raop_rtp->logger = logger;
-    raop_rtp->timing_rport = timing_rport;
+    raop_rtp->ntp = ntp;
 
     memcpy(&raop_rtp->callbacks, callbacks, sizeof(raop_callbacks_t));
     raop_rtp->buffer = raop_buffer_init(logger, aeskey, aesiv, ecdh_secret);
@@ -145,8 +140,6 @@ raop_rtp_init(logger_t *logger, raop_callbacks_t *callbacks, const unsigned char
     raop_rtp->flush = NO_FLUSH;
 
     MUTEX_CREATE(raop_rtp->run_mutex);
-    MUTEX_CREATE(raop_rtp->time_mutex);
-    COND_CREATE(raop_rtp->time_cond);
     return raop_rtp;
 }
 
@@ -157,8 +150,6 @@ raop_rtp_destroy(raop_rtp_t *raop_rtp)
     if (raop_rtp) {
         raop_rtp_stop(raop_rtp);
         MUTEX_DESTROY(raop_rtp->run_mutex);
-        MUTEX_DESTROY(raop_rtp->time_mutex);
-        COND_DESTROY(raop_rtp->time_cond);
         raop_buffer_destroy(raop_rtp->buffer);
         free(raop_rtp->metadata);
         free(raop_rtp->coverart);
@@ -205,33 +196,29 @@ raop_rtp_resend_callback(void *opaque, unsigned short seqnum, unsigned short cou
 static int
 raop_rtp_init_sockets(raop_rtp_t *raop_rtp, int use_ipv6, int use_udp)
 {
-    int csock = -1, tsock = -1, dsock = -1;
-    unsigned short cport = 0, tport = 0, dport = 0;
+    int csock = -1, dsock = -1;
+    unsigned short cport = 0, dport = 0;
 
     assert(raop_rtp);
 
     csock = netutils_init_socket(&cport, use_ipv6, 1);
-    tsock = netutils_init_socket(&tport, use_ipv6, 1);
     dsock = netutils_init_socket(&dport, use_ipv6, 1);
 
-    if (csock == -1 || tsock == -1 || dsock == -1) {
+    if (csock == -1 || dsock == -1) {
         goto sockets_cleanup;
     }
 
     /* Set socket descriptors */
     raop_rtp->csock = csock;
-    raop_rtp->tsock = tsock;
     raop_rtp->dsock = dsock;
 
     /* Set port values */
     raop_rtp->control_lport = cport;
-    raop_rtp->timing_lport = tport;
     raop_rtp->data_lport = dport;
     return 0;
 
     sockets_cleanup:
     if (csock != -1) closesocket(csock);
-    if (tsock != -1) closesocket(tsock);
     if (dsock != -1) closesocket(dsock);
     return -1;
 }
@@ -345,68 +332,6 @@ raop_rtp_process_events(raop_rtp_t *raop_rtp, void *cb_data)
 }
 
 static THREAD_RETVAL
-raop_rtp_thread_time(void *arg)
-{
-    raop_rtp_t *raop_rtp = arg;
-    assert(raop_rtp);
-    struct sockaddr_storage saddr;
-    socklen_t saddrlen;
-    unsigned char packet[128];
-    unsigned int packetlen;
-    unsigned char time[32]={0x80,0xd2,0x00,0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-            ,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    };
-    uint64_t base = now_us();
-    uint64_t rec_pts = 0;
-    while (1) {
-        MUTEX_LOCK(raop_rtp->run_mutex);
-        if (!raop_rtp->running) {
-            MUTEX_UNLOCK(raop_rtp->run_mutex);
-            break;
-        }
-        MUTEX_UNLOCK(raop_rtp->run_mutex);
-        uint64_t send_time = now_us() - base + rec_pts;
-
-        byteutils_put_timeStamp(time, 24, send_time);
-        logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time send time 32 bytes, port = %d", raop_rtp->timing_rport);
-        struct sockaddr_in *addr = (struct sockaddr_in *)&raop_rtp->remote_saddr;
-        addr->sin_port = htons(raop_rtp->timing_rport);
-        int sendlen = sendto(raop_rtp->tsock, (char *)time, sizeof(time), 0, (struct sockaddr *) &raop_rtp->remote_saddr, raop_rtp->remote_saddr_len);
-        logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time sendlen = %d", sendlen);
-
-        saddrlen = sizeof(saddr);
-        packetlen = recvfrom(raop_rtp->tsock, (char *)packet, sizeof(packet), 0,
-                             (struct sockaddr *)&saddr, &saddrlen);
-        int type_t = packet[1] & ~0x80;
-        logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time receive time type_t 0x%02x, packetlen = %d", type_t, packetlen);
-        if (type_t == 0x53) {
-
-        }
-        // 9-16 Local time of the sender when the NTP request packet leaves the sender. T1
-        uint64_t Origin_Timestamp = byteutils_read_timeStamp(packet, 8);
-        // 17-24 Local time of the receiving end when the NTP request packet arrives at the receiving end. T2
-        uint64_t Receive_Timestamp = byteutils_read_timeStamp(packet, 16);
-        // 25-32 Transmit Timestamp: The local time of the responder when the response message leaves the responder. T3
-        uint64_t Transmit_Timestamp = byteutils_read_timeStamp(packet, 24);
-
-        // FIXME: Let's write this simply.
-        rec_pts = Receive_Timestamp;
-
-        struct timeval now;
-        struct timespec outtime;
-        MUTEX_LOCK(raop_rtp->time_mutex);
-        gettimeofday(&now, NULL);
-        outtime.tv_sec = now.tv_sec + 3;
-        outtime.tv_nsec = now.tv_usec * 1000;
-        int ret = pthread_cond_timedwait(&raop_rtp->time_cond, &raop_rtp->time_mutex, &outtime);
-        MUTEX_UNLOCK(raop_rtp->time_mutex);
-    }
-
-    logger_log(raop_rtp->logger, LOGGER_INFO, "Exiting UDP raop_rtp_thread_time thread");
-    return 0;
-}
-
-static THREAD_RETVAL
 raop_rtp_thread_udp(void *arg)
 {
     raop_rtp_t *raop_rtp = arg;
@@ -512,7 +437,7 @@ raop_rtp_thread_udp(void *arg)
 // Start rtp service, three udp ports
 void
 raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_rport,
-                     unsigned short *control_lport, unsigned short *timing_lport, unsigned short *data_lport)
+                     unsigned short *control_lport, unsigned short *data_lport)
 {
     logger_log(raop_rtp->logger, LOGGER_INFO, "raop_rtp_start_audio");
     int use_ipv6 = 0;
@@ -537,14 +462,12 @@ raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_r
         return;
     }
     if (control_lport) *control_lport = raop_rtp->control_lport;
-    if (timing_lport) *timing_lport = raop_rtp->timing_lport;
     if (data_lport) *data_lport = raop_rtp->data_lport;
     /* Create the thread and initialize running values */
     raop_rtp->running = 1;
     raop_rtp->joined = 0;
 
     THREAD_CREATE(raop_rtp->thread, raop_rtp_thread_udp, raop_rtp);
-    THREAD_CREATE(raop_rtp->thread_time, raop_rtp_thread_time, raop_rtp);
     MUTEX_UNLOCK(raop_rtp->run_mutex);
 }
 
@@ -667,18 +590,7 @@ raop_rtp_stop(raop_rtp_t *raop_rtp)
     /* Join the thread */
     THREAD_JOIN(raop_rtp->thread);
 
-    logger_log(raop_rtp->logger, LOGGER_DEBUG, "Stopping audio time thread");
-
-    MUTEX_LOCK(raop_rtp->time_mutex);
-    COND_SIGNAL(raop_rtp->time_cond);
-    MUTEX_UNLOCK(raop_rtp->time_mutex);
-
-    THREAD_JOIN(raop_rtp->thread_time);
-    
-    logger_log(raop_rtp->logger, LOGGER_DEBUG, "Stopped audio time thread");
-
     if (raop_rtp->csock != -1) closesocket(raop_rtp->csock);
-    if (raop_rtp->tsock != -1) closesocket(raop_rtp->tsock);
     if (raop_rtp->dsock != -1) closesocket(raop_rtp->dsock);
 
     /* Mark thread as joined */

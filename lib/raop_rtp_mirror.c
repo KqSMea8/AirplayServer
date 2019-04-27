@@ -36,11 +36,11 @@ struct h264codec_s {
 struct raop_rtp_mirror_s {
     logger_t *logger;
     raop_callbacks_t callbacks;
+    raop_ntp_t *ntp;
 
     /* Buffer to handle all resends */
     mirror_buffer_t *buffer;
 
-    raop_rtp_mirror_t *mirror;
     /* Remote address as sockaddr */
     struct sockaddr_storage remote_saddr;
     socklen_t remote_saddr_len;
@@ -52,18 +52,12 @@ struct raop_rtp_mirror_s {
 
     int flush;
     thread_handle_t thread_mirror;
-    thread_handle_t thread_time;
     mutex_handle_t run_mutex;
 
-    mutex_handle_t time_mutex;
-    cond_handle_t time_cond;
     /* MUTEX LOCKED VARIABLES END */
-    int mirror_data_sock, mirror_time_sock;
+    int mirror_data_sock;
 
     unsigned short mirror_data_lport;
-    // client ntp port
-    unsigned short mirror_timing_rport;
-    unsigned short mirror_timing_lport;
 };
 
 static int
@@ -94,8 +88,9 @@ raop_rtp_parse_remote(raop_rtp_mirror_t *raop_rtp_mirror, const unsigned char *r
 }
 
 #define NO_FLUSH (-42)
-raop_rtp_mirror_t *raop_rtp_mirror_init(logger_t *logger, raop_callbacks_t *callbacks, const unsigned char *remote, int remotelen,
-                                        const unsigned char *aeskey, const unsigned char *ecdh_secret, unsigned short timing_rport)
+raop_rtp_mirror_t *raop_rtp_mirror_init(logger_t *logger, raop_callbacks_t *callbacks, raop_ntp_t *ntp,
+                                        const unsigned char *remote, int remotelen,
+                                        const unsigned char *aeskey, const unsigned char *ecdh_secret)
 {
     raop_rtp_mirror_t *raop_rtp_mirror;
 
@@ -107,7 +102,7 @@ raop_rtp_mirror_t *raop_rtp_mirror_init(logger_t *logger, raop_callbacks_t *call
         return NULL;
     }
     raop_rtp_mirror->logger = logger;
-    raop_rtp_mirror->mirror_timing_rport = timing_rport;
+    raop_rtp_mirror->ntp = ntp;
 
     memcpy(&raop_rtp_mirror->callbacks, callbacks, sizeof(raop_callbacks_t));
     raop_rtp_mirror->buffer = mirror_buffer_init(logger, aeskey, ecdh_secret);
@@ -124,8 +119,6 @@ raop_rtp_mirror_t *raop_rtp_mirror_init(logger_t *logger, raop_callbacks_t *call
     raop_rtp_mirror->flush = NO_FLUSH;
 
     MUTEX_CREATE(raop_rtp_mirror->run_mutex);
-    MUTEX_CREATE(raop_rtp_mirror->time_mutex);
-    COND_CREATE(raop_rtp_mirror->time_cond);
     return raop_rtp_mirror;
 }
 
@@ -135,71 +128,6 @@ raop_rtp_init_mirror_aes(raop_rtp_mirror_t *raop_rtp_mirror, uint64_t streamConn
     mirror_buffer_init_aes(raop_rtp_mirror->buffer, streamConnectionID);
 }
 
-/**
- * ntp
- */
-static THREAD_RETVAL
-raop_rtp_mirror_thread_time(void *arg)
-{
-    raop_rtp_mirror_t *raop_rtp_mirror = arg;
-    assert(raop_rtp_mirror);
-    struct sockaddr_storage saddr;
-    socklen_t saddrlen;
-    unsigned char packet[128];
-    unsigned int packetlen;
-    int first = 0;
-    unsigned char time[48]={35,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    uint64_t base = now_us();
-    uint64_t rec_pts = 0;
-    while (1) {
-        MUTEX_LOCK(raop_rtp_mirror->run_mutex);
-        if (!raop_rtp_mirror->running) {
-            MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
-            break;
-        }
-        MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
-        uint64_t send_time = now_us() - base + rec_pts;
-
-        byteutils_put_timeStamp(time, 40, send_time);
-        logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time send time 48 bytes, port = %d", raop_rtp_mirror->mirror_timing_rport);
-        struct sockaddr_in *addr = (struct sockaddr_in *)&raop_rtp_mirror->remote_saddr;
-        addr->sin_port = htons(raop_rtp_mirror->mirror_timing_rport);
-        int sendlen = sendto(raop_rtp_mirror->mirror_time_sock, (char *)time, sizeof(time), 0, (struct sockaddr *) &raop_rtp_mirror->remote_saddr, raop_rtp_mirror->remote_saddr_len);
-        logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time sendlen = %d", sendlen);
-
-        saddrlen = sizeof(saddr);
-        packetlen = recvfrom(raop_rtp_mirror->mirror_time_sock, (char *)packet, sizeof(packet), 0,
-                             (struct sockaddr *)&saddr, &saddrlen);
-        logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time receive time packetlen = %d", packetlen);
-        // 16-24 The time when the system clock was last set or updated.
-        uint64_t Reference_Timestamp = byteutils_read_timeStamp(packet, 16);
-        // 24-32 Local time of the sender when the NTP request packet leaves the sender. T1
-        uint64_t Origin_Timestamp = byteutils_read_timeStamp(packet, 24);
-        // 32-40 Local time of the receiving end when the NTP request packet arrives at the receiving end. T2
-        uint64_t Receive_Timestamp = byteutils_read_timeStamp(packet, 32);
-        // 40-48 Transmit Timestamp: The local time of the responder when the response message leaves the responder. T3
-        uint64_t Transmit_Timestamp = byteutils_read_timeStamp(packet, 40);
-
-        // FIXME: Let's write this simply.
-        rec_pts = Receive_Timestamp;
-
-        if (first == 0) {
-            first++;
-        } else {
-            struct timeval now;
-            struct timespec outtime;
-            MUTEX_LOCK(raop_rtp_mirror->time_mutex);
-            gettimeofday(&now, NULL);
-            outtime.tv_sec = now.tv_sec + 3;
-            outtime.tv_nsec = now.tv_usec * 1000;
-            int ret = pthread_cond_timedwait(&raop_rtp_mirror->time_cond, &raop_rtp_mirror->time_mutex, &outtime);
-            MUTEX_UNLOCK(raop_rtp_mirror->time_mutex);
-            //sleepms(3000);
-        }
-    }
-    logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Exiting UDP raop_rtp_mirror_thread_time thread");
-    return 0;
-}
 //#define DUMP_H264
 
 #define RAOP_PACKET_LEN 32768
@@ -471,8 +399,7 @@ raop_rtp_mirror_thread(void *arg)
 }
 
 void
-raop_rtp_start_mirror(raop_rtp_mirror_t *raop_rtp_mirror, int use_udp, unsigned short *mirror_timing_lport,
-                      unsigned short *mirror_data_lport)
+raop_rtp_start_mirror(raop_rtp_mirror_t *raop_rtp_mirror, int use_udp, unsigned short *mirror_data_lport)
 {
     int use_ipv6 = 0;
 
@@ -493,7 +420,6 @@ raop_rtp_start_mirror(raop_rtp_mirror_t *raop_rtp_mirror, int use_udp, unsigned 
         MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
         return;
     }
-    if (mirror_timing_lport) *mirror_timing_lport = raop_rtp_mirror->mirror_timing_lport;
     if (mirror_data_lport) *mirror_data_lport = raop_rtp_mirror->mirror_data_lport;
 
     /* Create the thread and initialize running values */
@@ -501,7 +427,6 @@ raop_rtp_start_mirror(raop_rtp_mirror_t *raop_rtp_mirror, int use_udp, unsigned 
     raop_rtp_mirror->joined = 0;
 
     THREAD_CREATE(raop_rtp_mirror->thread_mirror, raop_rtp_mirror_thread, raop_rtp_mirror);
-    THREAD_CREATE(raop_rtp_mirror->thread_time, raop_rtp_mirror_thread_time, raop_rtp_mirror);
     MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
 }
 
@@ -521,18 +446,8 @@ void raop_rtp_mirror_stop(raop_rtp_mirror_t *raop_rtp_mirror) {
     /* Join the thread */
     THREAD_JOIN(raop_rtp_mirror->thread_mirror);
 
-    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Stopping mirror time thread");
-
-    MUTEX_LOCK(raop_rtp_mirror->time_mutex);
-    COND_SIGNAL(raop_rtp_mirror->time_cond);
-    MUTEX_UNLOCK(raop_rtp_mirror->time_mutex);
-
-    THREAD_JOIN(raop_rtp_mirror->thread_time);
-
-    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Stopping mirror time thread");
 
     if (raop_rtp_mirror->mirror_data_sock != -1) closesocket(raop_rtp_mirror->mirror_data_sock);
-    if (raop_rtp_mirror->mirror_time_sock != -1) closesocket(raop_rtp_mirror->mirror_time_sock);
 
     /* Mark thread as joined */
     MUTEX_LOCK(raop_rtp_mirror->run_mutex);
@@ -544,8 +459,6 @@ void raop_rtp_mirror_destroy(raop_rtp_mirror_t *raop_rtp_mirror) {
     if (raop_rtp_mirror) {
         raop_rtp_mirror_stop(raop_rtp_mirror);
         MUTEX_DESTROY(raop_rtp_mirror->run_mutex);
-        MUTEX_DESTROY(raop_rtp_mirror->time_mutex);
-        COND_DESTROY(raop_rtp_mirror->time_cond);
         mirror_buffer_destroy(raop_rtp_mirror->buffer);
     }
 }
@@ -553,14 +466,13 @@ void raop_rtp_mirror_destroy(raop_rtp_mirror_t *raop_rtp_mirror) {
 static int
 raop_rtp_init_mirror_sockets(raop_rtp_mirror_t *raop_rtp_mirror, int use_ipv6)
 {
-    int dsock = -1, tsock = -1;
-    unsigned short tport = 0, dport = 0;
+    int dsock = -1;
+    unsigned short dport = 0;
 
     assert(raop_rtp_mirror);
 
     dsock = netutils_init_socket(&dport, use_ipv6, 0);
-    tsock = netutils_init_socket(&tport, use_ipv6, 1);
-    if (dsock == -1 || tsock == -1) {
+    if (dsock == -1) {
         goto sockets_cleanup;
     }
 
@@ -571,15 +483,12 @@ raop_rtp_init_mirror_sockets(raop_rtp_mirror_t *raop_rtp_mirror, int use_ipv6)
 
     /* Set socket descriptors */
     raop_rtp_mirror->mirror_data_sock = dsock;
-    raop_rtp_mirror->mirror_time_sock = tsock;
 
     /* Set port values */
     raop_rtp_mirror->mirror_data_lport = dport;
-    raop_rtp_mirror->mirror_timing_lport = tport;
     return 0;
 
     sockets_cleanup:
-    if (tsock != -1) closesocket(tsock);
     if (dsock != -1) closesocket(dsock);
     return -1;
 }

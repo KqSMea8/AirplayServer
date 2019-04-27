@@ -36,11 +36,11 @@ uint64_t byteutils_read_int(unsigned char* b, int offset) {
     return ((uint64_t)b[offset]  << 24) | ((uint64_t)b[offset + 1]  << 16) | ((uint64_t)b[offset + 2] << 8) | ((uint64_t)b[offset + 3]  << 0);
 }
 //s->us
-uint64_t byteutils_read_timeStamp(unsigned char* b, int offset) {
+uint64_t byteutils_read_time_stamp(unsigned char *b, int offset) {
     return (byteutils_read_int(b, offset) * 1000000) + ((byteutils_read_int(b, offset + 4) * 1000000) / INT_32_MAX);
 }
 // us time to ntp
-void byteutils_put_timeStamp(unsigned char* b, int offset, uint64_t time) {
+void byteutils_put_time_stamp(unsigned char *b, int offset, uint64_t time) {
 
     // time= ms
     uint64_t seconds = time / 1000000L;

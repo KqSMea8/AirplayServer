@@ -294,9 +294,34 @@ raop_handler_setup(raop_conn_t *conn,
         logger_log(conn->raop->logger, LOGGER_DEBUG, "fairplay_decrypt ret = %d", ret);
 		unsigned char ecdh_secret[32];
         pairing_get_ecdh_secret_key(conn->pairing, ecdh_secret);
-        conn->raop_rtp = raop_rtp_init(conn->raop->logger, &conn->raop->callbacks, conn->remote, conn->remotelen, aeskey, aesiv, ecdh_secret, timing_rport);
-		conn->raop_rtp_mirror = raop_rtp_mirror_init(conn->raop->logger, &conn->raop->callbacks, conn->remote, conn->remotelen, aeskey, ecdh_secret, timing_rport);
+
+        unsigned short timing_lport;
+        conn->raop_ntp = raop_ntp_init(conn->raop->logger, conn->remote, conn->remotelen, timing_rport);
+        raop_ntp_start(conn->raop_ntp, &timing_lport);
+
+        conn->raop_rtp = raop_rtp_init(conn->raop->logger, &conn->raop->callbacks, conn->raop_ntp, conn->remote, conn->remotelen, aeskey, aesiv, ecdh_secret);
+		conn->raop_rtp_mirror = raop_rtp_mirror_init(conn->raop->logger, &conn->raop->callbacks, conn->raop_ntp, conn->remote, conn->remotelen, aeskey, ecdh_secret);
         conn->setup_status = SETUP_KEY;
+
+        plist_t r_node = plist_new_dict();
+        plist_t event_port_node = plist_new_uint(conn->raop->port);
+        plist_t timing_port_node = plist_new_uint(timing_lport);
+        plist_dict_set_item(r_node, "timingPort", timing_port_node);
+        plist_dict_set_item(r_node, "eventPort", event_port_node);
+
+        uint32_t len = 0;
+        char *rsp = NULL;
+        plist_to_bin(r_node, &rsp, &len);
+
+        logger_log(conn->raop->logger, LOGGER_DEBUG, "SETUP 0 len = %d", len);
+        http_response_add_header(response, "Content-Type", "application/x-apple-binary-plist");
+        *response_data = malloc(len);
+        memcpy(*response_data, rsp, len);
+        *response_datalen = len;
+        free(rsp);
+
+        logger_log(conn->raop->logger, LOGGER_INFO, "eport = %d, tport = %d", conn->raop->port, timing_lport);
+
      } else if (conn->setup_status == SETUP_KEY) {
         unsigned short tport=0, dport=0;
         logger_log(conn->raop->logger, LOGGER_DEBUG, "SETUP 2");
@@ -312,7 +337,7 @@ raop_handler_setup(raop_conn_t *conn,
 
         if (conn->raop_rtp_mirror) {
 			raop_rtp_init_mirror_aes(conn->raop_rtp_mirror, streamConnectionID);
-			raop_rtp_start_mirror(conn->raop_rtp_mirror, use_udp, &tport, &dport);
+			raop_rtp_start_mirror(conn->raop_rtp_mirror, use_udp, &dport);
             logger_log(conn->raop->logger, LOGGER_DEBUG, "RAOP initialized success");
         } else {
             logger_log(conn->raop->logger, LOGGER_ERR, "RAOP not initialized at SETUP, playing will fail!");
@@ -324,22 +349,20 @@ raop_handler_setup(raop_conn_t *conn,
         plist_t s_sub_node = plist_new_dict();
         plist_t data_port_node = plist_new_uint(dport);
         plist_t type_node = plist_new_uint(110);
-        plist_t event_port_node = plist_new_uint(conn->raop->port);
-        plist_t timing_port_node = plist_new_uint(tport);
         plist_dict_set_item(s_sub_node, "dataPort", data_port_node);
         plist_dict_set_item(s_sub_node, "type", type_node);
         plist_array_append_item(s_node, s_sub_node);
-        plist_dict_set_item(r_node, "eventPort", event_port_node);
-        plist_dict_set_item(r_node, "timingPort", timing_port_node);
         plist_dict_set_item(r_node, "streams", s_node);
         uint32_t len = 0;
-        char* rsp = NULL;
+        char *rsp = NULL;
         plist_to_bin(r_node, &rsp, &len);
         logger_log(conn->raop->logger, LOGGER_DEBUG, "SETUP 2 len = %d", len);
         http_response_add_header(response, "Content-Type", "application/x-apple-binary-plist");
         *response_data = malloc(len);
         memcpy(*response_data, rsp, len);
         *response_datalen = len;
+        free(rsp);
+
         logger_log(conn->raop->logger, LOGGER_INFO, "dport = %d, tport = %d", dport, tport);
         conn->setup_status = SETUP_MIRROR_PORT;
      } else if (conn->setup_status == SETUP_MIRROR_PORT) {
@@ -347,53 +370,33 @@ raop_handler_setup(raop_conn_t *conn,
         unsigned short cport = 0, tport = 0, dport = 0;
 
         if (conn->raop_rtp) {
-            raop_rtp_start_audio(conn->raop_rtp, use_udp, remote_cport, &cport, &tport, &dport);
+            raop_rtp_start_audio(conn->raop_rtp, use_udp, remote_cport, &cport, &dport);
             logger_log(conn->raop->logger, LOGGER_DEBUG, "RAOP initialized success");
         } else {
             logger_log(conn->raop->logger, LOGGER_ERR, "RAOP not initialized at SETUP, playing will fail!");
             http_response_set_disconnect(response, 1);
         }
-        // Need to return port
-		/**
-		 * <dict>
-	<key>streams</key>
-	<array>
-		<dict>
-			<key>dataPort</key>
-			<integer>42820</integer>
-			<key>controlPort</key>
-			<integer>46440</integer>
-			<key>type</key>
-			<integer>96</integer>
-		</dict>
-	</array>
 
-	<key>timingPort</key>
-	<integer>46440</integer>
-</dict>
-</plist>
-		 */
 		plist_t r_node = plist_new_dict();
 		plist_t s_node = plist_new_array();
 		plist_t s_sub_node = plist_new_dict();
 		plist_t data_port_node = plist_new_uint(dport);
 		plist_t type_node = plist_new_uint(96);
 		plist_t control_port_node = plist_new_uint(cport);
-		plist_t timing_port_node = plist_new_uint(tport);
 		plist_dict_set_item(s_sub_node, "dataPort", data_port_node);
 		plist_dict_set_item(s_sub_node, "type", type_node);
 		plist_dict_set_item(s_sub_node, "controlPort", control_port_node);
 		plist_array_append_item(s_node, s_sub_node);
-		plist_dict_set_item(r_node, "timingPort", timing_port_node);
 		plist_dict_set_item(r_node, "streams", s_node);
 		uint32_t len = 0;
-		char* rsp = NULL;
+        char *rsp = NULL;
 		plist_to_bin(r_node, &rsp, &len);
 		logger_log(conn->raop->logger, LOGGER_DEBUG, "SETUP 3 len = %d", len);
 		http_response_add_header(response, "Content-Type", "application/x-apple-binary-plist");
 		*response_data = malloc(len);
 		memcpy(*response_data, rsp, len);
 		*response_datalen = len;
+        free(rsp);
 
 		logger_log(conn->raop->logger, LOGGER_INFO, "dport = %d, tport = %d, cport = %d", dport, tport, cport);
 		conn->setup_status = SETUP_AUDIO_PORT;

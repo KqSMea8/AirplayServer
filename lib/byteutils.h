@@ -17,8 +17,8 @@ uint64_t byteutils_get_long(unsigned char* b, int offset);
 uint64_t ntptopts(uint64_t ntp);
 
 uint64_t byteutils_read_int(unsigned char* b, int offset);
-uint64_t byteutils_read_timeStamp(unsigned char* b, int offset);
-void byteutils_put_timeStamp(unsigned char* b, int offset, uint64_t time);
+uint64_t byteutils_read_time_stamp(unsigned char *b, int offset);
+void byteutils_put_time_stamp(unsigned char *b, int offset, uint64_t time);
 
 uint64_t now_us();
 
