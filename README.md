@@ -8,9 +8,9 @@ The goal is to make it run smoothly even on a Raspberry Pi Zero.
 Screen mirroring and audio works. The GPU is used for decoding the h264
 video stream. The Pi has no hardware acceleration for audio (AirPlay uses AAC), 
 so the FDK-AAC decoder is used for that.
-Unfortunately, it seems the Pi Zero is too slow for decoding audio at
-a reasonable speed.
 
+Both works fine one a Raspberry Pi 3B+. Unfortunately, it seems the Pi Zero
+is too slow for decoding audio at a reasonable speed.
 In order to get audio decoding fast enough for the Pi Zero, we likely have
 to use a different AAC decoder library. 
 
@@ -21,7 +21,7 @@ video packets from up to 0.2 seconds to up to 0.007 seconds for large packets
 If you are seeing long playback pauses, make sure the DUMP flags are not active.
 Disk IO can slow down the whole program when dumping to files.
 
-There still are some playback issues. Have a look at the TODO list below.
+There still are some minor issues. Have a look at the TODO list below.
 
 Please note RPiPlay might not be suitable for remote video playback, as it
 lacks a dedicated component for that: It seems like AirPlay on an AppleTV
