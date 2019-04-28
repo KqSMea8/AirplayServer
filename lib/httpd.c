@@ -298,7 +298,7 @@ httpd_thread(void *arg)
 			/* If request is finished, process and deallocate */
 			if (http_request_is_complete(connection->request)) {
 				http_response_t *response = NULL;
-				// 回调收到的数据给raop
+				// Callback the received data to raop
 				httpd->callbacks.conn_request(connection->user_data, connection->request, &response);
 				http_request_destroy(connection->request);
 				connection->request = NULL;

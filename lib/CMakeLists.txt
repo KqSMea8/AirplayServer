@@ -3,7 +3,7 @@ include_directories( curve25519 ed25519 playfair plist/plist )
 
 
 aux_source_directory(. play_src)
-set(DIR_SRCS ${play_src} raop_ntp.c raop_ntp.h)
+set(DIR_SRCS ${play_src})
 
 add_library( play-lib
         SHARED
