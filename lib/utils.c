@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 char *
 utils_strsep(char **stringp, const char *delim)
@@ -140,4 +141,41 @@ utils_hwaddr_airplay(char *str, int strlen, const char *hwaddr, int hwaddrlen)
     if (j != 0) j--;
     str[j++] = '\0';
     return j;
+}
+
+char *utils_parse_hex(char *str, int str_len, int *data_len) {
+    assert(str_len % 2 == 0);
+
+    char *data = malloc(str_len / 2);
+
+    for (int i = 0; i < (str_len / 2); i++) {
+        char c_1 = str[i * 2];
+        if (c_1 >= 97 && c_1 <= 102) {
+            c_1 -= (97 - 10);
+        } else if (c_1 >= 65 && c_1 <= 70) {
+            c_1 -= (65 - 10);
+        } else if (c_1 >= 48 && c_1 <= 57) {
+            c_1 -= 48;
+        } else {
+            free(data);
+            return NULL;
+        }
+
+        char c_2 = str[(i * 2) + 1];
+        if (c_2 >= 97 && c_2 <= 102) {
+            c_2 -= (97 - 10);
+        } else if (c_2 >= 65 && c_2 <= 70) {
+            c_2 -= (65 - 10);
+        } else if (c_2 >= 48 && c_2 <= 57) {
+            c_2 -= 48;
+        } else {
+            free(data);
+            return NULL;
+        }
+
+        data[i] = (c_1 << 4) | c_2;
+    }
+
+    *data_len = (str_len / 2);
+    return data;
 }

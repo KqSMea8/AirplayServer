@@ -42,6 +42,8 @@ struct raop_s {
 	pairing_t *pairing;
 	httpd_t *httpd;
 
+	dnssd_t *dnssd;
+
     unsigned short port;
 };
 
@@ -367,6 +369,14 @@ raop_set_log_callback(raop_t *raop, raop_log_callback_t callback, void *cls)
 
 	logger_set_callback(raop->logger, callback, cls);
 }
+
+void 
+raop_set_dnssd(raop_t *raop, dnssd_t *dnssd)
+{
+	assert(dnssd);
+	raop->dnssd = dnssd;
+}
+
 
 int
 raop_start(raop_t *raop, unsigned short *port)

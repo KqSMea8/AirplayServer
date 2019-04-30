@@ -14,7 +14,7 @@ find_package(OpenSSL REQUIRED)
 
 target_link_libraries( play-lib
         OpenSSL::Crypto
-	pthread
+	    pthread
         curve25519
         ed25519
         playfair

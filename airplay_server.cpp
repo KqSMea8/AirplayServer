@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
         } else if (arg == "-a") {
             if (i == argc - 1) continue;
             std::string audio_device_name(argv[++i]);
-            audio_device = audio_device_name == "hdmi" ? AUDIO_DEVICE_NONE : 
+            audio_device = audio_device_name == "hdmi" ? AUDIO_DEVICE_NONE :
                            audio_device_name == "analog" ? AUDIO_DEVICE_ANALOG:
                            AUDIO_DEVICE_NONE;
         } else if (arg == "-h" || arg == "-v") {
@@ -216,14 +216,16 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     LOGD("raop port = % d", raop_get_port(raop));
 
     int error;
-    dnssd = dnssd_init(&error);
+    dnssd = dnssd_init(name.c_str(), strlen(name.c_str()), hw_addr.data(), hw_addr.size(), &error);
     if (error) {
         LOGE("Could not initialize dnssd library!");
         return -2;
     }
 
-    dnssd_register_raop(dnssd, name.c_str(), port, hw_addr.data(), hw_addr.size(), 0);
-    dnssd_register_airplay(dnssd, name.c_str(), port + 1, hw_addr.data(), hw_addr.size());
+    raop_set_dnssd(raop, dnssd);
+    
+    dnssd_register_raop(dnssd, port);
+    dnssd_register_airplay(dnssd, port + 1);
 
     return 0;
 }

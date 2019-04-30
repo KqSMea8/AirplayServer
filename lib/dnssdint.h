@@ -23,7 +23,6 @@
 #define AIRPLAY_SRCVERS "220.68"
 #define AIRPLAY_FLAGS "0x4"
 #define AIRPLAY_VV "2"
-#define AIRPLAY_RHD "5.6.0.0"
 #define AIRPLAY_PK "b07727d6f6cd6e08b58ede525ec3cdeaa252ad9f683feb212ef8a205246554e7"
 #define AIRPLAY_PI "2e388006-13ba-4041-9a67-25dd4a43d536"
 
