@@ -598,3 +598,14 @@ raop_rtp_stop(raop_rtp_t *raop_rtp)
     raop_rtp->joined = 1;
     MUTEX_UNLOCK(raop_rtp->run_mutex);
 }
+
+int
+raop_rtp_is_running(raop_rtp_t *raop_rtp)
+{
+    assert(raop_rtp);
+    MUTEX_LOCK(raop_rtp->run_mutex);
+    int running = raop_rtp->running;
+    MUTEX_UNLOCK(raop_rtp->run_mutex);
+    return running;
+}
+
