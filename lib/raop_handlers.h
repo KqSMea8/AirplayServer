@@ -162,15 +162,9 @@ raop_handler_info(raop_conn_t *conn,
     plist_array_append_item(displays_node, displays_0_node);
     plist_dict_set_item(r_node, "displays", displays_node);
 
-    uint32_t len = 0;
-    char *rsp = NULL;
-    plist_to_bin(r_node, &rsp, &len);
-    logger_log(conn->raop->logger, LOGGER_DEBUG, "INFO len = %d", len);
+    plist_to_bin(r_node, response_data, (uint32_t *) response_datalen);
+    logger_log(conn->raop->logger, LOGGER_DEBUG, "INFO len = %d", response_datalen);
     http_response_add_header(response, "Content-Type", "application/x-apple-binary-plist");
-    *response_data = malloc(len);
-    memcpy(*response_data, rsp, len);
-    *response_datalen = len;
-    free(rsp);
     free(pk);
     free(hw_addr);
 }
@@ -311,7 +305,7 @@ raop_handler_setup(raop_conn_t *conn,
                    http_request_t *request, http_response_t *response,
                    char **response_data, int *response_datalen)
 {
-    unsigned short remote_cport=0;
+    unsigned short remote_cport = 0;
 
     const char *transport;
     int use_udp;
@@ -471,14 +465,8 @@ raop_handler_setup(raop_conn_t *conn,
         plist_dict_set_item(res_root_node, "streams", res_streams_node);
     }
 
-    uint32_t len = 0;
-    char *rsp = NULL;
-    plist_to_bin(res_root_node, &rsp, &len);
+    plist_to_bin(res_root_node, response_data, (uint32_t*) response_datalen);
     http_response_add_header(response, "Content-Type", "application/x-apple-binary-plist");
-    *response_data = malloc(len);
-    memcpy(*response_data, rsp, len);
-    *response_datalen = len;
-    free(rsp);
 }
 
 static void
