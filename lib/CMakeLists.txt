@@ -10,6 +10,9 @@ add_library( play-lib
         ${DIR_SRCS}
         )
 
+
+set($ENV{OPENSSL_ROOT_DIR} "/usr/local/opt/openssl@1.1/")
+set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl@1.1/")
 find_package(OpenSSL REQUIRED)
 
 target_link_libraries( play-lib
