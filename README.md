@@ -3,6 +3,7 @@
 An open-source implementation of an AirPlay mirroring server for the Raspberry Pi.
 The goal is to make it run smoothly even on a Raspberry Pi Zero.
 
+
 # State
 
 Screen mirroring and audio works for iOS 9 or newer. Recent macOS versions also seem to be compatible. The GPU is used for decoding the h264 video stream. The Pi has no hardware acceleration for audio (AirPlay uses AAC), so the FDK-AAC decoder is used for that.
@@ -15,8 +16,10 @@ If you are seeing long playback pauses, make sure the DUMP flags are not active.
 
 There still are some minor issues. Have a look at the TODO list below.
 
-Please note RPiPlay might not be suitable for remote video playback, as it lacks a dedicated component for that: It seems like AirPlay on an AppleTV switches to a standard AirPlay connection when video playback starts, thus avoiding the re-encoding of the video.
+RPiPlay might not be suitable for remote video playback, as it lacks a dedicated component for that: It seems like AirPlay on an AppleTV effectively runs a web server on the device and sends the URL to the AppleTV, thus avoiding the re-encoding of the video.
 For details, refer to the [inofficial AirPlay specification](https://nto.github.io/AirPlay.html#screenmirroring).
+
+
 
 # Building
 
@@ -40,6 +43,7 @@ cmake ..
 make
 ```
 
+
 # Usage
 
 Start the airplay_server executable and an AirPlay mirror target device will appear in the network.
@@ -52,6 +56,16 @@ At the moment, these options are implemented:
 **-a (hdmi|analog|off)**: Set audio output device
 
 **-v/-h**: Displays short help and version information
+
+
+# Disclaimer
+
+All the resources in this repository are written using only freely available information from the internet. The code and related resources are meant for educational purposes only. It is the responsibility of the user to make sure all local laws are adhered to.
+
+This project makes use of a third-party GPL library for handling FairPlay. The legal status of that library is unclear. Should you be a representative of Apple and have any objections against the legality of the library and its use in this project, please contact me and I'll take the appropriate steps.
+
+Given the large number of third-party AirPlay receivers (mostly closed-source) available for purchase, it is my understanding that an open source implementation of the same functionality wouldn't violate any of Apple's rights either.
+
 
 # Authors
 
@@ -67,20 +81,25 @@ The code in this repository accumulated from various sources over time. Here is 
 * **Team XBMC**: Managed to show a black background for OpenMAX video rendering. This code is used in the video renderer. License: GNU GPL
 * **Orson Peters and contributors**: An implementation of [Ed25519](https://github.com/orlp/ed25519) signatures. Located in `lib/ed25519`, License: ZLIB; Depends on LibTomCrypt, License: Public Domain
 
+
 # Contributing
 
 I'm afraid I won't have time to regularly maintain this project. Instead, I'm hoping this project can be improved in a community effort. I'll fix and add as much as I need for personal use, and I count on you to do the same!
 
 Your contributions are more than welcome!
 
+
 # Todo
+
 * Properly handle timestamps and ntp
   => Smooth playback, low latency
 * Use OpenSSL for the elliptic curve crypto?
 * Bug: Sometimes cannot be stopped
   => Likely deadlock in audio time thread
 
+
 # AirPlay protocol versions
+
 For multiple reasons, it's very difficult to clearly define the protocol names and versions of the components that make up the AirPlay streaming system. In fact, it seems like the AirPlay version number used for marketing differs from that used in the actual implementation. In order to tidy up this whole mess a bit, I did a little research that I'd like to summarize here:
 
 
