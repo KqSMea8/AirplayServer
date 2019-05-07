@@ -17,7 +17,7 @@ If you are seeing long playback pauses, make sure the DUMP flags are not active.
 There still are some minor issues. Have a look at the TODO list below.
 
 RPiPlay might not be suitable for remote video playback, as it lacks a dedicated component for that: It seems like AirPlay on an AppleTV effectively runs a web server on the device and sends the URL to the AppleTV, thus avoiding the re-encoding of the video.
-For details, refer to the [inofficial AirPlay specification](https://nto.github.io/AirPlay.html#screenmirroring).
+For rough details, refer to the (mostly obsolete) [inofficial AirPlay specification](https://nto.github.io/AirPlay.html#screenmirroring).
 
 
 
