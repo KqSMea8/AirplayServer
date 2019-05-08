@@ -40,13 +40,8 @@ raop_handler_info(raop_conn_t *conn,
     int hw_addr_raw_len = 0;
     char *hw_addr_raw = dnssd_get_hw_addr(conn->raop->dnssd, &hw_addr_raw_len);
 
-    // The hw_addr from dnssd doesn't contain : between bytes, so add these here
-    char *hw_addr = calloc(1, hw_addr_raw_len + (hw_addr_raw_len / 2));
-    for (int i = 0; i < hw_addr_raw_len / 2; ++i) {
-        if (i != 0) hw_addr[(i * 3) - 1] = ':';
-        hw_addr[i * 3] = hw_addr_raw[(i * 2)];
-        hw_addr[(i * 3) + 1] = hw_addr_raw[(i * 2) + 1];
-    }
+    char *hw_addr = calloc(1, 3 * hw_addr_raw_len);
+    int hw_addr_len = utils_hwaddr_airplay(hw_addr, 3 * hw_addr_raw_len, hw_addr_raw, hw_addr_raw_len);
 
     int pk_len = 0;
     char *pk = utils_parse_hex(AIRPLAY_PK, strlen(AIRPLAY_PK), &pk_len);

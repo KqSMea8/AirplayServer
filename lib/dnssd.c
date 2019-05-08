@@ -223,7 +223,7 @@ dnssd_init(const char* name, int name_len, const char* hw_addr, int hw_addr_len,
     }
     memcpy(dnssd->name, name, name_len);
 
-    dnssd->hw_addr_len = hw_addr_len * 3;
+    dnssd->hw_addr_len = hw_addr_len;
     dnssd->hw_addr = calloc(1, dnssd->hw_addr_len);
     if (!dnssd->hw_addr) {
         free(dnssd->name);
@@ -232,8 +232,7 @@ dnssd_init(const char* name, int name_len, const char* hw_addr, int hw_addr_len,
         return NULL;
     }
 
-    dnssd->hw_addr_len = utils_hwaddr_raop(dnssd->hw_addr, dnssd->hw_addr_len, hw_addr, hw_addr_len);
-    assert(dnssd->hw_addr_len > hw_addr_len);
+    memcpy(dnssd->hw_addr, hw_addr, hw_addr_len);
 
     return dnssd;
 }
@@ -255,7 +254,6 @@ int
 dnssd_register_raop(dnssd_t *dnssd, unsigned short port)
 {
     char servname[MAX_SERVNAME];
-    int ret;
 
     assert(dnssd);
 
@@ -280,7 +278,18 @@ dnssd_register_raop(dnssd_t *dnssd, unsigned short port)
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "vn", strlen(RAOP_VN), RAOP_VN);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "pk", strlen(RAOP_PK), RAOP_PK);
 
-    memcpy(servname, dnssd->hw_addr, dnssd->hw_addr_len);
+    /* Convert hardware address to string */
+    if (utils_hwaddr_raop(servname, sizeof(servname), dnssd->hw_addr, dnssd->hw_addr_len) < 0) {
+        /* FIXME: handle better */
+        return -1;
+    }
+
+    /* Check that we have bytes for 'hw@name' format */
+    if (sizeof(servname) < strlen(servname) + 1 + dnssd->name_len + 1) {
+        /* FIXME: handle better */
+        return -2;
+    }
+
     strncat(servname, "@", sizeof(servname)-strlen(servname)-1);
     strncat(servname, dnssd->name, sizeof(servname)-strlen(servname)-1);
 
@@ -300,10 +309,19 @@ dnssd_register_raop(dnssd_t *dnssd, unsigned short port)
 int
 dnssd_register_airplay(dnssd_t *dnssd, unsigned short port)
 {
+    char device_id[3 * MAX_HWADDR_LEN];
+
     assert(dnssd);
 
+    /* Convert hardware address to string */
+    if (utils_hwaddr_airplay(device_id, sizeof(device_id), dnssd->hw_addr, dnssd->hw_addr_len) < 0) {
+        /* FIXME: handle better */
+        return -1;
+    }
+
+
     dnssd->TXTRecordCreate(&dnssd->airplay_record, 0, NULL);
-    dnssd->TXTRecordSetValue(&dnssd->airplay_record, "deviceid", dnssd->hw_addr_len, dnssd->hw_addr);
+    dnssd->TXTRecordSetValue(&dnssd->airplay_record, "deviceid", strlen(device_id), device_id);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "features", strlen(AIRPLAY_FEATURES), AIRPLAY_FEATURES);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "flags", strlen(AIRPLAY_FLAGS), AIRPLAY_FLAGS);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "model", strlen(GLOBAL_MODEL), GLOBAL_MODEL);
