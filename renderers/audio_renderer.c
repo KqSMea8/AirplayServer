@@ -249,6 +249,20 @@ void audio_renderer_render_buffer(audio_renderer_t *renderer, unsigned char* dat
     }
 }
 
+void audio_renderer_set_volume(audio_renderer_t *renderer, float volume) {
+    OMX_AUDIO_CONFIG_VOLUMETYPE audio_volume;
+    memset(&audio_volume, 0, sizeof(audio_volume));
+    audio_volume.nSize = sizeof(OMX_AUDIO_CONFIG_VOLUMETYPE);
+    audio_volume.nVersion.nVersion = OMX_VERSION;
+
+    audio_volume.nPortIndex = 100;
+    audio_volume.sVolume.nValue = volume * 50.0;
+
+    if (OMX_SetConfig(ilclient_get_handle(renderer->audio_renderer), OMX_IndexConfigAudioVolume, &audio_volume) != OMX_ErrorNone) {
+        logger_log(renderer->logger, LOGGER_DEBUG, "Could not set audio volume");
+    }
+}
+
 void audio_renderer_flush(audio_renderer_t *renderer) {
     // TODO
 }

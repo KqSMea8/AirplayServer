@@ -156,6 +156,13 @@ extern "C" void video_process(void *cls, h264_decode_struct *data) {
     video_renderer_render_buffer(video_renderer, data->data, data->data_len, data->pts);
 }
 
+extern "C" void audio_set_volume(void *cls, void *session, float volume) {
+    if (audio_renderer != NULL) {
+        audio_renderer_set_volume(audio_renderer, volume);
+    }
+}
+
+
 extern "C" void log_callback(void *cls, int level, const char *msg) {
     switch (level) {
         case LOGGER_DEBUG: {
@@ -199,6 +206,7 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.audio_process = audio_process;
     raop_cbs.video_process = video_process;
+    raop_cbs.audio_set_volume = audio_set_volume;
     raop = raop_init(10, &raop_cbs);
     if (raop == NULL) {
         LOGE("raop = NULL");

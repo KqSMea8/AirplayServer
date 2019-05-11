@@ -38,6 +38,7 @@ typedef struct audio_renderer_s audio_renderer_t;
 
 audio_renderer_t *audio_renderer_init(logger_t *logger, audio_device_t device);
 void audio_renderer_render_buffer(audio_renderer_t *renderer, unsigned char* data, int datalen);
+void audio_renderer_set_volume(audio_renderer_t *renderer, float volume);
 void audio_renderer_flush(audio_renderer_t *renderer);
 void audio_renderer_destroy(audio_renderer_t *renderer);
 
