@@ -195,7 +195,7 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response)
 	} else if (!strcmp(method, "TEARDOWN")) {
 		logger_log(conn->raop->logger, LOGGER_INFO, "Received teardown, but not closing connection!");
 		//http_response_add_header(*response, "Connection", "close");
-		if (conn->raop != NULL && raop_rtp_is_running(conn->raop_rtp)) {
+		if (conn->raop_rtp != NULL && raop_rtp_is_running(conn->raop_rtp)) {
 			/* Destroy our RTP session */
 			raop_rtp_stop(conn->raop_rtp);
 		} else if (conn->raop_rtp_mirror) {
