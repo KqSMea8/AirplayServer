@@ -6,9 +6,9 @@ The goal is to make it run smoothly even on a Raspberry Pi Zero.
 
 # State
 
-Screen mirroring and audio works for iOS 9 or newer. Recent macOS versions also seem to be compatible. The GPU is used for decoding the h264 video stream. The Pi has no hardware acceleration for audio (AirPlay uses AAC), so the FDK-AAC decoder is used for that.
+Screen mirroring and audio works for iOS 9 or newer. Recent macOS versions also seem to be compatible. The GPU is used for decoding the h264 video stream. The Pi has no hardware acceleration for audio (AirPlay mirroring uses AAC), so the FDK-AAC decoder is used for that.
 
-Both works fine one a Raspberry Pi 3B+. Unfortunately, it seems the Pi Zero is too slow for decoding audio at a reasonable speed. In order to get audio decoding fast enough for the Pi Zero, we likely have to use a different AAC decoder library. 
+Both works fine on a Raspberry Pi 3B+. Unfortunately, it seems the Pi Zero is too slow for decoding audio at a reasonable speed. In order to get audio decoding fast enough for the Pi Zero, we likely have to use a different (lower-quality) AAC decoder library. 
 
 By using OpenSSL for AES decryption, I was able to speed up the decryption of video packets from up to 0.2 seconds to up to 0.007 seconds for large packets (On the Pi Zero). Average is now more like 0.002 seconds.
 
@@ -95,7 +95,7 @@ Your contributions are more than welcome!
   => Smooth playback, low latency
 * Use OpenSSL for the elliptic curve crypto?
 * Bug: Sometimes cannot be stopped
-  => Likely deadlock in audio time thread
+  => Likely deadlock in time thread
 
 
 # AirPlay protocol versions
