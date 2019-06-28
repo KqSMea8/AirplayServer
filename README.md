@@ -28,9 +28,9 @@ The following packages are required for building on Raspbian:
 * **cmake** (for the build system)
 * **libavahi-compat-libdnssd-dev** (for the bonjour registration)
 * **libssl-dev** (for crypto primitives)
-* **iclient** and Broadcom's OpenMAX stack as present in `/opt/vc` in Raspbian.
+* **ilclient** and Broadcom's OpenMAX stack as present in `/opt/vc` in Raspbian.
 
-For building on a fresh Raspbian install, these steps should be run in the 
+For building on a fresh Raspbian Stretch or Buster install, these steps should be run in the 
 project's root folder:
 
 ```bash
