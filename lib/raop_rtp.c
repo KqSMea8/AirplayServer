@@ -17,6 +17,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include "raop_rtp.h"
 #include "raop.h"
@@ -381,20 +382,26 @@ raop_rtp_thread_udp(void *arg)
            packetlen = recvfrom(raop_rtp->csock, (char *)packet, sizeof(packet), 0,
                                 (struct sockaddr *)&saddr, &saddrlen);
 
-            memcpy(&raop_rtp->control_saddr, &saddr, saddrlen);
-            raop_rtp->control_saddr_len = saddrlen;
-            int type_c = packet[1] & ~0x80;
-            logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp type_c 0x%02x, packetlen = %d", type_c, packetlen);
-            if (type_c == 0x56) {
-                // Handling retransmitted packets, removing 4 bytes from the header
-                // The current audio processing design doesn't support retransmitted samples
-                logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp did not handle retransmitted sample");
-            } else if (type_c == 0x54) {
-                // TODO: Temporarily not processed
+           memcpy(&raop_rtp->control_saddr, &saddr, saddrlen);
+           raop_rtp->control_saddr_len = saddrlen;
+           int type_c = packet[1] & ~0x80;
+           logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp type_c 0x%02x, packetlen = %d", type_c, packetlen);
+           if (type_c == 0x56) {
+               // Handling retransmitted packets, removing 4 bytes from the header
+               // The current audio processing design doesn't support retransmitted samples
+               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp did not handle retransmitted sample");
+           } else if (type_c == 0x54 && packetlen >= 20) {
+               uint32_t sync_rtp = byteutils_get_int_be(packet, 4) - 11025;
+               uint64_t sync_ntp_raw = byteutils_get_long_be(packet, 8);
+               uint64_t sync_ntp = raop_ntp_timestamp_to_micro_seconds(sync_ntp_raw, true);
+               uint32_t now_rtp = byteutils_get_int_be(packet, 16);
 
-            } else {
-                logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp unknown packet");
-            }
+               logger_log(raop_rtp->logger, LOGGER_DEBUG, "audio sync ntp = %llu", sync_ntp);
+
+               // TODO: Maintain NTP <-> audio RTP mapping
+           } else {
+               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp unknown packet");
+           }
         }
         if (FD_ISSET(raop_rtp->dsock, &rfds)) {
             //logger_log(raop_rtp->logger, LOGGER_INFO, "Would have data packet in queue");
@@ -412,6 +419,9 @@ raop_rtp_thread_udp(void *arg)
                 void *audiobuf = malloc(packetlen);
                 unsigned int audiobuflen;
 
+                uint32_t rtp_timestamp =  (packet[4] << 24) | (packet[5] << 16) | (packet[6] << 8) | packet[7];
+                logger_log(raop_rtp->logger, LOGGER_DEBUG, "audio timestamp = %u", rtp_timestamp);
+
                 int decrypt_ret = raop_buffer_decrypt(raop_rtp->buffer, packet, (unsigned char*) audiobuf, packetlen, &audiobuflen);
                 assert(decrypt_ret >= 0);
 
@@ -419,7 +429,7 @@ raop_rtp_thread_udp(void *arg)
                     aac_decode_struct aac_data;
                     aac_data.data_len = audiobuflen;
                     aac_data.data = audiobuf;
-                    raop_rtp->callbacks.audio_process(raop_rtp->callbacks.cls, &aac_data);
+                    raop_rtp->callbacks.audio_process(raop_rtp->callbacks.cls, raop_rtp->ntp, &aac_data);
                 }
 
                 free(audiobuf);

@@ -3,6 +3,8 @@
 
 #include "dnssd.h"
 #include "stream.h"
+#include "raop_ntp.h"
+
 #if defined (WIN32) && defined(DLL_EXPORT)
 # define RAOP_API __declspec(dllexport)
 #else
@@ -32,8 +34,8 @@ typedef void (*raop_log_callback_t)(void *cls, int level, const char *msg);
 struct raop_callbacks_s {
 	void* cls;
 
-	void  (*audio_process)(void *cls, aac_decode_struct *data);
-    void  (*video_process)(void *cls, h264_decode_struct *data);
+	void  (*audio_process)(void *cls, raop_ntp_t *ntp, aac_decode_struct *data);
+    void  (*video_process)(void *cls, raop_ntp_t *ntp, h264_decode_struct *data);
 
 	/* Optional but recommended callback functions */
 	void  (*audio_flush)(void *cls, void *session);
@@ -55,9 +57,7 @@ RAOP_API void *raop_get_callback_cls(raop_t *raop);
 RAOP_API int raop_start(raop_t *raop, unsigned short *port);
 RAOP_API int raop_is_running(raop_t *raop);
 RAOP_API void raop_stop(raop_t *raop);
-
 RAOP_API void raop_set_dnssd(raop_t *raop, dnssd_t *dnssd);
-
 RAOP_API void raop_destroy(raop_t *raop);
 
 #ifdef __cplusplus

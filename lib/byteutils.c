@@ -13,68 +13,94 @@
  */
 
 #include <time.h>
+#include <netinet/in.h>
 #include "byteutils.h"
 
-int byteutils_get_int(unsigned char* b, int offset) {
-    return ((b[offset + 3] & 0xff) << 24) | ((b[offset + 2] & 0xff) << 16) | ((b[offset + 1] & 0xff) << 8) | (b[offset] & 0xff);
+#ifndef htonll
+#include <endian.h>
+#define htonll(x) htobe64(x)
+#define ntohll(x) be64toh(x)
+#endif
+
+// The functions in this file assume a little endian cpu architecture!
+
+/**
+ * Reads a little endian unsigned 16 bit integer from the buffer at position offset
+ */
+uint16_t byteutils_get_short(unsigned char* b, int offset) {
+    return *((uint16_t*)(b + offset));
 }
 
-short byteutils_get_short(unsigned char* b, int offset) {
-    return (short) ((b[offset + 1] << 8) | (b[offset] & 0xff));
+/**
+ * Reads a little endian unsigned 32 bit integer from the buffer at position offset
+ */
+uint32_t byteutils_get_int(unsigned char* b, int offset) {
+    return *((uint32_t*)(b + offset));
 }
 
-float byteutils_get_float(unsigned char* b, int offset) {
-    //unsigned char tmp[4] = {b[offset + 3], b[offset + 2], b[offset + 1], b[offset]};
-    return *((float *)(b + offset));
-}
-
-
-uint64_t byteutils_get_int2(unsigned char* b, int offset) {
-    return ((uint64_t)(b[offset + 3] & 0xff) << 24) | ((uint64_t)(b[offset + 2] & 0xff) << 16) | ((uint64_t)(b[offset + 1] & 0xff) << 8) | ((uint64_t)b[offset] & 0xff);
-}
-
+/**
+ * Reads a little endian unsigned 64 bit integer from the buffer at position offset
+ */
 uint64_t byteutils_get_long(unsigned char* b, int offset) {
-    return (byteutils_get_int2(b, offset + 4)) << 32 | byteutils_get_int2(b, offset);
+    return *((uint64_t*)(b + offset));
 }
 
-//s -> us
-uint64_t ntptopts(uint64_t ntp) {
-    return (((ntp >> 32) & 0xffffffff)* 1000000) + ((ntp & 0xffffffff) * 1000 * 1000 / INT_32_MAX) ;
+/**
+ * Reads a big endian unsigned 16 bit integer from the buffer at position offset
+ */
+uint16_t byteutils_get_short_be(unsigned char* b, int offset) {
+    return ntohs(byteutils_get_short(b, offset));
 }
 
-uint64_t byteutils_read_int(unsigned char* b, int offset) {
-    return ((uint64_t)b[offset]  << 24) | ((uint64_t)b[offset + 1]  << 16) | ((uint64_t)b[offset + 2] << 8) | ((uint64_t)b[offset + 3]  << 0);
-}
-//s->us
-uint64_t byteutils_read_time_stamp(unsigned char *b, int offset) {
-    return (byteutils_read_int(b, offset) * 1000000) + ((byteutils_read_int(b, offset + 4) * 1000000) / INT_32_MAX);
-}
-// us time to ntp
-void byteutils_put_time_stamp(unsigned char *b, int offset, uint64_t time) {
-
-    // time= ms
-    uint64_t seconds = time / 1000000L;
-    uint64_t microseconds = time - seconds * 1000000L;
-    seconds += OFFSET_1900_TO_1970;
-
-    // write seconds in big endian format
-    b[offset++] = (uint8_t)(seconds >> 24);
-    b[offset++] = (uint8_t)(seconds >> 16);
-    b[offset++] = (uint8_t)(seconds >> 8);
-    b[offset++] = (uint8_t)(seconds >> 0);
-
-    uint64_t fraction = microseconds * 0x100000000L / 1000000L;
-    // write fraction in big endian format
-    b[offset++] = (uint8_t)(fraction >> 24);
-    b[offset++] = (uint8_t)(fraction >> 16);
-    b[offset++] = (uint8_t)(fraction >> 8);
-    // low order bits should be random data
-    b[offset++] = (uint8_t)(fraction >> 0);
-    //b[offset++] = (Math.random() * 255.0);
+/**
+ * Reads a big endian unsigned 32 bit integer from the buffer at position offset
+ */
+uint32_t byteutils_get_int_be(unsigned char* b, int offset) {
+    return ntohl(byteutils_get_int(b, offset));
 }
 
-uint64_t now_us() {
-    struct timespec time;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time);
-    return (uint64_t)time.tv_sec * 10000000L + (uint64_t)(time.tv_nsec / 1000);
+/**
+ * Reads a big endian unsigned 64 bit integer from the buffer at position offset
+ */
+uint64_t byteutils_get_long_be(unsigned char* b, int offset) {
+    return ntohll(byteutils_get_long(b, offset));
 }
+
+/**
+ * Reads a float from the buffer at position offset
+ */
+float byteutils_get_float(unsigned char* b, int offset) {
+    return *((float*)(b + offset));
+}
+
+/**
+ * Writes a little endian unsigned 32 bit integer to the buffer at position offset
+ */
+void byteutils_put_int(unsigned char* b, int offset, uint32_t value) {
+    *((uint32_t*)(b + offset)) = value;
+}
+
+/**
+ * Reads an ntp timestamp and returns it as micro seconds since the Unix epoch
+ */
+uint64_t byteutils_get_ntp_timestamp(unsigned char *b, int offset) {
+    uint64_t seconds = ntohl(((unsigned int) byteutils_get_int(b, offset))) - SECONDS_FROM_1900_TO_1970;
+    uint64_t fraction = ntohl((unsigned int) byteutils_get_int(b, offset + 4));
+    return (seconds * 1000000L) + ((fraction * 1000000L) >> 32);
+}
+
+/**
+ * Writes a time given as micro seconds since the Unix time epoch as an ntp timestamp
+ * into the buffer at position offset
+ */
+void byteutils_put_ntp_timestamp(unsigned char *b, int offset, uint64_t us_since_1970) {
+    uint64_t seconds = us_since_1970 / 1000000L;
+    uint64_t microseconds = us_since_1970 % 1000000L;
+    seconds += SECONDS_FROM_1900_TO_1970;
+    uint64_t fraction = (microseconds << 32) / 1000000L;
+
+    // Write in big endian!
+    byteutils_put_int(b, offset, htonl(seconds));
+    byteutils_put_int(b, offset + 4, htonl(fraction));
+}
+

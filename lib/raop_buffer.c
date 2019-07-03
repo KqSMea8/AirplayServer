@@ -155,11 +155,10 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
     // We only process samples we received in order
     // If this design leads to a noticeable amount of artifacts, reintroduce a buffer system
     if (!raop_buffer->first_packet && seqnum_cmp(seqnum, raop_buffer->last_seqnum) <= 0) {
-        //logger_log(raop_buffer->logger, LOGGER_DEBUG, "seqnum = %d last_seqnum = %d cmp = %hd", seqnum, raop_buffer->last_seqnum, seqnum_cmp(seqnum, raop_buffer->last_seqnum));
     	return 0;
     }
 
-    encryptedlen = payloadsize/16*16;
+    encryptedlen = payloadsize / 16*16;
     memset(output, 0, payloadsize);
     // Need to be initialized internally
     aes_ctx_t *aes_ctx_audio = aes_cbc_init(raop_buffer->aeskey, raop_buffer->aesiv, AES_DECRYPT);

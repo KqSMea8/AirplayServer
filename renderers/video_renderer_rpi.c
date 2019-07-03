@@ -50,7 +50,8 @@ struct video_renderer_s {
     COMPONENT_T *components[5];
     TUNNEL_T tunnels[4];
 
-    bool first_packet;
+    uint64_t first_packet_time;
+    uint64_t input_frames;
 };
 
 /* From: https://github.com/popcornmix/omxplayer/blob/master/omxplayer.cpp#L455
@@ -104,7 +105,6 @@ void video_renderer_destroy_decoder(video_renderer_t *renderer) {
 int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     memset(renderer->components, 0, sizeof(renderer->components));
     memset(renderer->tunnels, 0, sizeof(renderer->tunnels));
-    renderer->first_packet = true;
 
     bcm_host_init();
 
@@ -215,7 +215,10 @@ video_renderer_t *video_renderer_init(logger_t *logger, bool background) {
     if (!renderer) {
         return NULL;
     }
+
     renderer->logger = logger;
+    renderer->first_packet_time = 0;
+    renderer->input_frames = 0;
 
     if (video_renderer_init_decoder(renderer, background) != 1) {
         free(renderer);
@@ -225,13 +228,17 @@ video_renderer_t *video_renderer_init(logger_t *logger, bool background) {
     return renderer;
 }
 
-void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* data, int datalen, uint64_t pts) {
+void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int datalen, uint64_t pts) {
     if (datalen == 0) return;
 
     logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", datalen);
+    renderer->input_frames++;
 
     if (ilclient_remove_event(renderer->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Port settings changed!!");
+
+        uint64_t time_diff = raop_ntp_get_local_time(ntp) - renderer->first_packet_time;
+        logger_log(renderer->logger, LOGGER_DEBUG, "Video pipeline delay is %llu frames or %llu us", renderer->input_frames, time_diff);
 
         if (ilclient_setup_tunnel(&renderer->tunnels[0], 0, 0) != 0) {
             logger_log(renderer->logger, LOGGER_ERR, "Could not setup decoder tunnel");
@@ -265,9 +272,9 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
         // Just adds latency while the time calculations in raop_rtp_mirror are not fully implemented
         //buffer->nTimeStamp = timestamp;
 
-        if (renderer->first_packet) {
+        if (renderer->first_packet_time == 0) {
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
-            renderer->first_packet = false;
+            renderer->first_packet_time = raop_ntp_get_local_time(ntp);
         }
 
         // Mark the last buffer if we had to split the data
@@ -278,6 +285,9 @@ void video_renderer_render_buffer(video_renderer_t *renderer, unsigned char* dat
         if (OMX_EmptyThisBuffer(ilclient_get_handle(renderer->video_decoder), buffer) != OMX_ErrorNone) {
             logger_log(renderer->logger, LOGGER_ERR, "Video decoder refused processing buffer");
         }
+
+        int64_t video_delay = ((int64_t) raop_ntp_get_local_time(ntp)) - ((int64_t) pts);
+        logger_log(renderer->logger, LOGGER_DEBUG, "Video delay is %lld", video_delay);
     }
 }
 

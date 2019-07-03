@@ -16,6 +16,8 @@
 #ifndef RAOP_NTP_H
 #define RAOP_NTP_H
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "logger.h"
 
 typedef struct raop_ntp_s raop_ntp_t;
@@ -29,5 +31,12 @@ void raop_ntp_stop(raop_ntp_t *raop_ntp);
 unsigned short raop_ntp_get_port(raop_ntp_t *raop_ntp);
 
 void raop_ntp_destroy(raop_ntp_t *raop_rtp);
+
+uint64_t raop_ntp_timestamp_to_micro_seconds(uint64_t ntp_timestamp, bool account_for_epoch_diff);
+
+uint64_t raop_ntp_get_local_time(raop_ntp_t *raop_ntp);
+uint64_t raop_ntp_get_remote_time(raop_ntp_t *raop_ntp);
+uint64_t raop_ntp_convert_remote_time(raop_ntp_t *raop_ntp, uint64_t remote_time);
+uint64_t raop_ntp_convert_local_time(raop_ntp_t *raop_ntp, uint64_t local_time);
 
 #endif //RAOP_NTP_H

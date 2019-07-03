@@ -17,6 +17,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
+/* 
+ * AAC renderer using fdk-aac for decoding and OpenMAX for rendering
+*/
+
 #include "audio_renderer.h"
 
 #include <stdlib.h>
@@ -43,7 +47,8 @@ struct audio_renderer_s {
     COMPONENT_T *audio_renderer;
     COMPONENT_T *components[2];
 
-    bool first_packet;
+    uint64_t first_packet_time;
+    uint64_t input_frames;
 };
 
 void audio_renderer_destroy_decoder(audio_renderer_t *renderer) {
@@ -91,7 +96,7 @@ void audio_renderer_destroy_renderer(audio_renderer_t *renderer) {
 
 int audio_renderer_init_renderer(audio_renderer_t *renderer, audio_device_t device) {
     memset(renderer->components, 0, sizeof(renderer->components));
-    renderer->first_packet = true;
+    renderer->first_packet_time = 0;
 
     bcm_host_init();
 
@@ -174,6 +179,8 @@ audio_renderer_t *audio_renderer_init(logger_t *logger, audio_device_t device) {
         return NULL;
     }
     renderer->logger = logger;
+    renderer->first_packet_time = 0;
+    renderer->input_frames = 0;
 
     if (audio_renderer_init_decoder(renderer) != 1) {
         free(renderer);
@@ -193,10 +200,11 @@ audio_renderer_t *audio_renderer_init(logger_t *logger, audio_device_t device) {
 static FILE* file_pcm = NULL;
 #endif
 
-void audio_renderer_render_buffer(audio_renderer_t *renderer, unsigned char* data, int datalen) {
+void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int datalen) {
     if (datalen == 0) return;
 
     logger_log(renderer->logger, LOGGER_DEBUG, "Got AAC data of %d bytes", datalen);
+    renderer->input_frames++;
 
     // We assume that every buffer contains exactly 1 frame.
 
@@ -225,7 +233,6 @@ void audio_renderer_render_buffer(audio_renderer_t *renderer, unsigned char* dat
     fwrite(p_time_data, time_data_size, 1, file_pcm);
 #endif
 
-
     int offset = 0;
     while (offset < time_data_size) {
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->audio_renderer, 100, 1);
@@ -236,9 +243,9 @@ void audio_renderer_render_buffer(audio_renderer_t *renderer, unsigned char* dat
 
         buffer->nFilledLen = chunk_size;
         buffer->nOffset = 0;
-        if (renderer->first_packet) {
+        if (renderer->first_packet_time == 0) {
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
-            renderer->first_packet = 0;
+            renderer->first_packet_time = raop_ntp_get_local_time(ntp);
         } else {
             buffer->nFlags = OMX_BUFFERFLAG_TIME_UNKNOWN;
         }

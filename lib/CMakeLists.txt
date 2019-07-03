@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.4.1)
 include_directories( curve25519 ed25519 playfair plist/plist )
 
-
 aux_source_directory(. play_src)
 set(DIR_SRCS ${play_src})
 
@@ -10,13 +9,7 @@ add_library( play-lib
         ${DIR_SRCS}
         )
 
-
-set($ENV{OPENSSL_ROOT_DIR} "/usr/local/opt/openssl@1.1/")
-set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl@1.1/")
-find_package(OpenSSL REQUIRED)
-
 target_link_libraries( play-lib
-        OpenSSL::Crypto
 	    pthread
         curve25519
         ed25519
@@ -24,7 +17,11 @@ target_link_libraries( play-lib
         plist )
 
 if( UNIX AND NOT APPLE )
-target_link_libraries( play-lib
-		dns_sd )
+  find_package(OpenSSL REQUIRED)
+  target_link_libraries( play-lib OpenSSL::Crypto )
+  target_link_libraries( play-lib dns_sd )
+else()
+  include_directories( /usr/local/opt/openssl@1.1/include/ )
+  target_link_libraries( play-lib /usr/local/opt/openssl@1.1/lib/libcrypto.a )
 endif()
         

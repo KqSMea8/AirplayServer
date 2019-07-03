@@ -19,6 +19,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include "raop.h"
 #include "netutils.h"
@@ -152,8 +153,6 @@ raop_rtp_mirror_thread(void *arg)
     unsigned char packet[128];
     memset(packet, 0 , 128);
     unsigned int readstart = 0;
-    uint64_t pts_base = 0;
-    uint64_t pts = 0;
     assert(raop_rtp_mirror);
 
 #ifdef DUMP_H264
@@ -241,13 +240,15 @@ raop_rtp_mirror_thread(void *arg)
 
                 // Processing content data
                 if (payloadtype == 0) {
-                    uint64_t payloadntp = byteutils_get_long(packet, 8);
-                    // Reading time
-                    if (pts_base == 0) {
-                        pts_base = ntptopts(payloadntp);
-                    } else {
-                        pts =  ntptopts(payloadntp) - pts_base;
-                    }
+                    uint64_t ntp_timestamp_raw = byteutils_get_long(packet, 8);
+                    // Conveniently, the video data is already stamped with the remote wall clock time,
+                    // so no additional clock syncing needed. The only thing odd here is that the video
+                    // ntp time stamps don't include the SECONDS_FROM_1900_TO_1970, so it's really just
+                    // counting micro seconds since last boot.
+                    uint64_t ntp_timestamp = raop_ntp_timestamp_to_micro_seconds(ntp_timestamp_raw, false);
+
+                    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "video ntp = %llu", ntp_timestamp);
+
                     // Here is the encrypted data
                     unsigned char* payload_in = malloc(payloadsize);
                     unsigned char* payload = malloc(payloadsize);
@@ -290,8 +291,8 @@ raop_rtp_mirror_thread(void *arg)
                     h264_data.data_len = payloadsize;
                     h264_data.data = payload;
                     h264_data.frame_type = 1;
-                    h264_data.pts = pts;
-                    raop_rtp_mirror->callbacks.video_process(raop_rtp_mirror->callbacks.cls, &h264_data);
+                    h264_data.pts = ntp_timestamp;
+                    raop_rtp_mirror->callbacks.video_process(raop_rtp_mirror->callbacks.cls, raop_rtp_mirror->ntp, &h264_data);
                     free(payload_in);
                     free(payload);
                 } else if ((payloadtype & 255) == 1) {
@@ -357,7 +358,7 @@ raop_rtp_mirror_thread(void *arg)
                         h264_data.data = sps_pps;
                         h264_data.frame_type = 0;
                         h264_data.pts = 0;
-                        raop_rtp_mirror->callbacks.video_process(raop_rtp_mirror->callbacks.cls, &h264_data);
+                        raop_rtp_mirror->callbacks.video_process(raop_rtp_mirror->callbacks.cls, raop_rtp_mirror->ntp, &h264_data);
                     }
                     free(h264.picture_parameter_set);
                     free(h264.sequence);

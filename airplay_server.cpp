@@ -38,7 +38,7 @@
 #define DEFAULT_NAME "RPiPlay"
 #define DEFAULT_SHOW_BACKGROUND true
 #define DEFAULT_AUDIO_DEVICE AUDIO_DEVICE_HDMI
-#define DEFAULT_HW_ADDRESS { 0x48, 0x5d, 0x60, 0x7c, 0xee, 0x22 }
+#define DEFAULT_HW_ADDRESS { (char) 0x48, (char) 0x5d, (char) 0x60, (char) 0x7c, (char) 0xee, (char) 0x22 }
 
 int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device);
 int stop_server();
@@ -146,14 +146,14 @@ int main(int argc, char *argv[]) {
 }
 
 // Server callbacks
-extern "C" void audio_process(void *cls, aac_decode_struct *data) {
+extern "C" void audio_process(void *cls, raop_ntp_t *ntp, aac_decode_struct *data) {
     if (audio_renderer != NULL) {
-        audio_renderer_render_buffer(audio_renderer, data->data, data->data_len);
+        audio_renderer_render_buffer(audio_renderer, ntp, data->data, data->data_len);
     }
 }
 
-extern "C" void video_process(void *cls, h264_decode_struct *data) {
-    video_renderer_render_buffer(video_renderer, data->data, data->data_len, data->pts);
+extern "C" void video_process(void *cls, raop_ntp_t *ntp, h264_decode_struct *data) {
+    video_renderer_render_buffer(video_renderer, ntp, data->data, data->data_len, data->pts);
 }
 
 extern "C" void audio_set_volume(void *cls, void *session, float volume) {
@@ -187,21 +187,6 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 }
 
 int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device) {
-    logger_t *render_logger = logger_init();
-    logger_set_callback(render_logger, log_callback, NULL);
-    logger_set_level(render_logger, LOGGER_DEBUG);
-    if ((video_renderer = video_renderer_init(render_logger, show_background)) == NULL) {
-        LOGE("Could not init video renderer");
-        return -1;
-    }
-
-    if (audio_device == AUDIO_DEVICE_NONE) {
-        LOGI("Audio disabled");
-    } else if ((audio_renderer = audio_renderer_init(render_logger, audio_device)) == NULL) {
-        LOGE("Could not init audio renderer");
-        return -1;
-    }
-
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.audio_process = audio_process;
@@ -217,6 +202,21 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
 
     raop_set_log_callback(raop, log_callback, NULL);
     raop_set_log_level(raop, RAOP_LOG_DEBUG);
+
+    logger_t *render_logger = logger_init();
+    logger_set_callback(render_logger, log_callback, NULL);
+    logger_set_level(render_logger, LOGGER_DEBUG);
+    if ((video_renderer = video_renderer_init(render_logger, show_background)) == NULL) {
+        LOGE("Could not init video renderer");
+        return -1;
+    }
+
+    if (audio_device == AUDIO_DEVICE_NONE) {
+        LOGI("Audio disabled");
+    } else if ((audio_renderer = audio_renderer_init(render_logger, audio_device)) == NULL) {
+        LOGE("Could not init audio renderer");
+        return -1;
+    }
 
     unsigned short port = 0;
     raop_start(raop, &port);

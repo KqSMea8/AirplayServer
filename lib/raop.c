@@ -381,4 +381,3 @@ raop_stop(raop_t *raop)
 	assert(raop);
 	httpd_stop(raop->httpd);
 }
-

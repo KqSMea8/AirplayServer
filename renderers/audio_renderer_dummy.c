@@ -17,30 +17,40 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-#ifndef AUDIO_RENDERER_H
-#define AUDIO_RENDERER_H
+#include "audio_renderer.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <stdint.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
 #include <stdbool.h>
-#include "../lib/logger.h"
-#include "../lib/raop_ntp.h"
+#include <unistd.h>
 
-typedef enum audio_device_e { AUDIO_DEVICE_HDMI, AUDIO_DEVICE_ANALOG, AUDIO_DEVICE_NONE } audio_device_t;
+struct audio_renderer_s {
+    logger_t *logger;
+};
 
-typedef struct audio_renderer_s audio_renderer_t;
-
-audio_renderer_t *audio_renderer_init(logger_t *logger, audio_device_t device);
-void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int datalen);
-void audio_renderer_set_volume(audio_renderer_t *renderer, float volume);
-void audio_renderer_flush(audio_renderer_t *renderer);
-void audio_renderer_destroy(audio_renderer_t *renderer);
-
-#ifdef __cplusplus
+audio_renderer_t *audio_renderer_init(logger_t *logger, audio_device_t device) {
+    audio_renderer_t *renderer;
+    renderer = calloc(1, sizeof(audio_renderer_t));
+    if (!renderer) {
+        return NULL;
+    }
+    renderer->logger = logger;
+    return renderer;
 }
-#endif
 
-#endif //AUDIO_RENDERER_H
+void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int datalen) {
+}
+
+void audio_renderer_set_volume(audio_renderer_t *renderer, float volume) {
+}
+
+void audio_renderer_flush(audio_renderer_t *renderer) {
+}
+
+void audio_renderer_destroy(audio_renderer_t *renderer) {
+    if (renderer) {
+        free(renderer);
+    }
+}
