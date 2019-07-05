@@ -222,7 +222,9 @@ conn_destroy(void *ptr)
 {
 	raop_conn_t *conn = ptr;
 
-	if (conn->raop_ntp) {
+    logger_log(conn->raop->logger, LOGGER_INFO, "Destroying connection");
+
+    if (conn->raop_ntp) {
 	    raop_ntp_destroy(conn->raop_ntp);
 	}
 	if (conn->raop_rtp) {
@@ -303,15 +305,14 @@ raop_destroy(raop_t *raop)
 {
 	if (raop) {
 		raop_stop(raop);
-
-		pairing_destroy(raop->pairing);
-		httpd_destroy(raop->httpd);
-		logger_destroy(raop->logger);
-		free(raop);
+        pairing_destroy(raop->pairing);
+        httpd_destroy(raop->httpd);
+        logger_destroy(raop->logger);
+        free(raop);
 
 		/* Cleanup the network */
 		netutils_cleanup();
-	}
+    }
 }
 
 int

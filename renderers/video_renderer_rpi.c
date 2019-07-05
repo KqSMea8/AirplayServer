@@ -135,22 +135,33 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     }
     renderer->components[1] = renderer->video_renderer;
 
-    // Create clock
     if (ilclient_create_component(renderer->client, &renderer->clock, "clock",
-            ILCLIENT_DISABLE_ALL_PORTS) != 0) {
+                                  ILCLIENT_DISABLE_ALL_PORTS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
     }
     renderer->components[2] = renderer->clock;
 
+    // Set the reference clock to the video clock
+    OMX_TIME_CONFIG_ACTIVEREFCLOCKTYPE active_ref_clock;
+    active_ref_clock.nSize = sizeof(OMX_TIME_CONFIG_ACTIVEREFCLOCKTYPE);
+    active_ref_clock.nVersion.nVersion = OMX_VERSION;
+    active_ref_clock.eClock = OMX_TIME_RefClockVideo;
+    if (OMX_SetConfig(ilclient_get_handle(renderer->clock), OMX_IndexConfigTimeActiveRefClock,
+            &active_ref_clock) != OMX_ErrorNone) {
+        video_renderer_destroy_decoder(renderer);
+        return -13;
+    }
+
     // Setup clock
-    OMX_TIME_CONFIG_CLOCKSTATETYPE cstate;
-    memset(&cstate, 0, sizeof(cstate));
-    cstate.nSize = sizeof(cstate);
-    cstate.nVersion.nVersion = OMX_VERSION;
-    cstate.eState = OMX_TIME_ClockStateWaitingForStartTime;
-    cstate.nWaitMask = 1;
-    if (OMX_SetParameter(ilclient_get_handle(renderer->clock), OMX_IndexConfigTimeClockState, &cstate) != OMX_ErrorNone) {
+    OMX_TIME_CONFIG_CLOCKSTATETYPE clock_state;
+    memset(&clock_state, 0, sizeof(clock_state));
+    clock_state.nSize = sizeof(clock_state);
+    clock_state.nVersion.nVersion = OMX_VERSION;
+    clock_state.eState = OMX_TIME_ClockStateWaitingForStartTime;
+    clock_state.nWaitMask = 1;
+    if (OMX_SetParameter(ilclient_get_handle(renderer->clock), OMX_IndexConfigTimeClockState,
+            &clock_state) != OMX_ErrorNone) {
         video_renderer_destroy_decoder(renderer);
         return -13;
     }
@@ -177,18 +188,18 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     display_region.set = OMX_DISPLAY_SET_FULLSCREEN;
     display_region.fullscreen = OMX_TRUE;
 
-    if (OMX_SetConfig(ilclient_get_handle(renderer->video_renderer), OMX_IndexConfigDisplayRegion, &display_region) != OMX_ErrorNone) {
+    if (OMX_SetConfig(ilclient_get_handle(renderer->video_renderer), OMX_IndexConfigDisplayRegion,
+            &display_region) != OMX_ErrorNone) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Could not set renderer to fullscreen");
         video_renderer_destroy_decoder(renderer);
         return -13;
     }
 
-    // Setup clock
+    // Setup clock tunnel
     if (ilclient_setup_tunnel(&renderer->tunnels[2], 0, 0) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -15;
     }
-    ilclient_change_component_state(renderer->clock, OMX_StateExecuting);
 
     // Set decoder format
     ilclient_change_component_state(renderer->video_decoder, OMX_StateIdle);
@@ -199,13 +210,15 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     format.nPortIndex = 130;
     format.eCompressionFormat = OMX_VIDEO_CodingAVC;
 
-    if (OMX_SetParameter(ilclient_get_handle(renderer->video_decoder), OMX_IndexParamVideoPortFormat, &format) != OMX_ErrorNone ||
+    if (OMX_SetParameter(ilclient_get_handle(renderer->video_decoder), OMX_IndexParamVideoPortFormat,
+            &format) != OMX_ErrorNone ||
             ilclient_enable_port_buffers(renderer->video_decoder, 130, NULL, NULL, NULL) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -15;
     }
 
-    ilclient_change_component_state(renderer->video_decoder, OMX_StateExecuting);
+    // Components are started in video_renderer_start()
+
     return 1;
 }
 
@@ -228,10 +241,23 @@ video_renderer_t *video_renderer_init(logger_t *logger, bool background) {
     return renderer;
 }
 
-void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int datalen, uint64_t pts) {
-    if (datalen == 0) return;
+ILCLIENT_T *video_renderer_get_ilclient(video_renderer_t *renderer) {
+    return renderer->client;
+}
 
-    logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", datalen);
+COMPONENT_T *video_renderer_get_clock(video_renderer_t *renderer) {
+    return renderer->clock;
+}
+
+void video_renderer_start(video_renderer_t *renderer) {
+    ilclient_change_component_state(renderer->clock, OMX_StateExecuting);
+    ilclient_change_component_state(renderer->video_decoder, OMX_StateExecuting);
+}
+
+void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int data_len, uint64_t pts, int type) {
+    if (data_len == 0) return;
+
+    logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", data_len);
     renderer->input_frames++;
 
     if (ilclient_remove_event(renderer->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {
@@ -254,11 +280,11 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
     }
 
     int offset = 0;
-    while (offset < datalen) {
+    while (offset < data_len) {
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
-        if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!", datalen);
+        if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!", data_len);
 
-        int chunk_size = MIN(datalen - offset, buffer->nAllocLen);
+        int chunk_size = MIN(data_len - offset, buffer->nAllocLen);
         memcpy(buffer->pBuffer, data + offset, chunk_size);
 
         offset += chunk_size;
@@ -269,16 +295,19 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
         OMX_TICKS timestamp;
         timestamp.nLowPart = pts;
         timestamp.nHighPart = pts >> 32;
-        // Just adds latency while the time calculations in raop_rtp_mirror are not fully implemented
-        //buffer->nTimeStamp = timestamp;
+        buffer->nTimeStamp = timestamp;
 
         if (renderer->first_packet_time == 0) {
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
             renderer->first_packet_time = raop_ntp_get_local_time(ntp);
+            OMX_TICKS timestamp;
+            timestamp.nLowPart = renderer->first_packet_time;
+            timestamp.nHighPart = renderer->first_packet_time >> 32;
+            buffer->nTimeStamp = timestamp;
         }
 
         // Mark the last buffer if we had to split the data
-        if (chunk_size < datalen && offset == datalen) {
+        if (chunk_size < data_len && offset == data_len) {
             buffer->nFlags = OMX_BUFFERFLAG_ENDOFNAL;
         }
 

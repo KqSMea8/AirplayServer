@@ -30,7 +30,7 @@ struct audio_renderer_s {
     logger_t *logger;
 };
 
-audio_renderer_t *audio_renderer_init(logger_t *logger, audio_device_t device) {
+audio_renderer_t *audio_renderer_init(logger_t *logger, video_renderer_t *video_renderer, audio_device_t device) {
     audio_renderer_t *renderer;
     renderer = calloc(1, sizeof(audio_renderer_t));
     if (!renderer) {
@@ -40,7 +40,10 @@ audio_renderer_t *audio_renderer_init(logger_t *logger, audio_device_t device) {
     return renderer;
 }
 
-void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int datalen) {
+void audio_renderer_start(audio_renderer_t *renderer) {
+}
+
+void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int data_len, uint64_t pts) {
 }
 
 void audio_renderer_set_volume(audio_renderer_t *renderer, float volume) {

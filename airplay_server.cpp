@@ -148,12 +148,12 @@ int main(int argc, char *argv[]) {
 // Server callbacks
 extern "C" void audio_process(void *cls, raop_ntp_t *ntp, aac_decode_struct *data) {
     if (audio_renderer != NULL) {
-        audio_renderer_render_buffer(audio_renderer, ntp, data->data, data->data_len);
+        audio_renderer_render_buffer(audio_renderer, ntp, data->data, data->data_len, data->pts);
     }
 }
 
 extern "C" void video_process(void *cls, raop_ntp_t *ntp, h264_decode_struct *data) {
-    video_renderer_render_buffer(video_renderer, ntp, data->data, data->data_len, data->pts);
+    video_renderer_render_buffer(video_renderer, ntp, data->data, data->data_len, data->pts, data->frame_type);
 }
 
 extern "C" void audio_set_volume(void *cls, void *session, float volume) {
@@ -213,10 +213,13 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
 
     if (audio_device == AUDIO_DEVICE_NONE) {
         LOGI("Audio disabled");
-    } else if ((audio_renderer = audio_renderer_init(render_logger, audio_device)) == NULL) {
+    } else if ((audio_renderer = audio_renderer_init(render_logger, video_renderer, audio_device)) == NULL) {
         LOGE("Could not init audio renderer");
         return -1;
     }
+
+    if (video_renderer) video_renderer_start(video_renderer);
+    if (audio_renderer) audio_renderer_start(audio_renderer);
 
     unsigned short port = 0;
     raop_start(raop, &port);
@@ -242,7 +245,8 @@ int stop_server() {
     raop_destroy(raop);
     dnssd_unregister_raop(dnssd);
     dnssd_unregister_airplay(dnssd);
-    video_renderer_destroy(video_renderer);
+    // If we don't destroy these two in the correct order, we get a deadlock from the ilclient library
     audio_renderer_destroy(audio_renderer);
+    video_renderer_destroy(video_renderer);
     return 0;
 }
