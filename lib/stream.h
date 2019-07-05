@@ -30,6 +30,7 @@ typedef struct {
 typedef struct {
     unsigned char *data;
     int data_len;
+    uint64_t pts;
 } aac_decode_struct;
 
 #endif //AIRPLAYSERVER_STREAM_H
