@@ -41,6 +41,7 @@
 
 struct video_renderer_s {
     logger_t *logger;
+    bool low_latency;
 
     ILCLIENT_T *client;
     COMPONENT_T *video_decoder;
@@ -150,7 +151,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     request_callback.nIndex = OMX_IndexConfigBufferStall;
     request_callback.bEnable = OMX_TRUE;
     if (OMX_SetConfig(ilclient_get_handle(renderer->video_decoder), OMX_IndexConfigRequestCallback,
-            &request_callback) != OMX_ErrorNone) {
+                      &request_callback) != OMX_ErrorNone) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Could not request video stall callback");
         return -14;
     }
@@ -171,7 +172,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     active_ref_clock.nVersion.nVersion = OMX_VERSION;
     active_ref_clock.eClock = OMX_TIME_RefClockVideo;
     if (OMX_SetConfig(ilclient_get_handle(renderer->clock), OMX_IndexConfigTimeActiveRefClock,
-            &active_ref_clock) != OMX_ErrorNone) {
+                      &active_ref_clock) != OMX_ErrorNone) {
         video_renderer_destroy_decoder(renderer);
         return -13;
     }
@@ -245,7 +246,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     return 1;
 }
 
-video_renderer_t *video_renderer_init(logger_t *logger, bool background) {
+video_renderer_t *video_renderer_init(logger_t *logger, bool background, bool low_latency) {
     video_renderer_t *renderer;
     renderer = calloc(1, sizeof(video_renderer_t));
     if (!renderer) {
@@ -253,6 +254,8 @@ video_renderer_t *video_renderer_init(logger_t *logger, bool background) {
     }
 
     renderer->logger = logger;
+    renderer->low_latency = low_latency;
+
     renderer->first_packet_time = 0;
     renderer->input_frames = 0;
 
@@ -347,12 +350,11 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
         buffer->nFilledLen = chunk_size;
         buffer->nOffset = 0;
 
-        buffer->nTimeStamp = ilclient_ticks_from_s64(pts);
-
+        if (!renderer->low_latency) buffer->nTimeStamp = ilclient_ticks_from_s64(pts);
         if (renderer->first_packet_time == 0) {
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
             renderer->first_packet_time = raop_ntp_get_local_time(ntp);
-            buffer->nTimeStamp = ilclient_ticks_from_s64(renderer->first_packet_time);
+            if (!renderer->low_latency) buffer->nTimeStamp = ilclient_ticks_from_s64(renderer->first_packet_time);
         }
 
         // Mark the last buffer if we had to split the data

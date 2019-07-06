@@ -30,7 +30,7 @@ struct audio_renderer_s {
     logger_t *logger;
 };
 
-audio_renderer_t *audio_renderer_init(logger_t *logger, video_renderer_t *video_renderer, audio_device_t device) {
+audio_renderer_t *audio_renderer_init(logger_t *logger, video_renderer_t *video_renderer, audio_device_t device, bool low_latency) {
     audio_renderer_t *renderer;
     renderer = calloc(1, sizeof(audio_renderer_t));
     if (!renderer) {

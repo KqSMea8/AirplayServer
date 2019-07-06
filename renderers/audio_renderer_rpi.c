@@ -44,6 +44,7 @@ extern COMPONENT_T *video_renderer_get_clock(video_renderer_t *renderer);
 struct audio_renderer_s {
     logger_t *logger;
     video_renderer_t *video_renderer;
+    bool low_latency;
 
     HANDLE_AACDECODER audio_decoder;
 
@@ -108,7 +109,6 @@ void audio_renderer_destroy_renderer(audio_renderer_t *renderer) {
 
 int audio_renderer_init_renderer(audio_renderer_t *renderer, video_renderer_t *video_renderer, audio_device_t device) {
     memset(renderer->components, 0, sizeof(renderer->components));
-    renderer->first_packet_time = 0;
 
     if (video_renderer) {
         renderer->client = video_renderer_get_ilclient(video_renderer);
@@ -234,7 +234,7 @@ int audio_renderer_init_renderer(audio_renderer_t *renderer, video_renderer_t *v
     return 1;
 }
 
-audio_renderer_t *audio_renderer_init(logger_t *logger, video_renderer_t *video_renderer, audio_device_t device) {
+audio_renderer_t *audio_renderer_init(logger_t *logger, video_renderer_t *video_renderer, audio_device_t device, bool low_latency) {
     audio_renderer_t *renderer;
     renderer = calloc(1, sizeof(audio_renderer_t));
     if (!renderer) {
@@ -242,6 +242,8 @@ audio_renderer_t *audio_renderer_init(logger_t *logger, video_renderer_t *video_
     }
     renderer->logger = logger;
     renderer->video_renderer = video_renderer;
+    renderer->low_latency = low_latency;
+
     renderer->first_packet_time = 0;
     renderer->input_frames = 0;
 
@@ -317,12 +319,12 @@ void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, u
 
         buffer->nFilledLen = chunk_size;
         buffer->nOffset = 0;
+
+        if (!renderer->low_latency) buffer->nTimeStamp = ilclient_ticks_from_s64(pts);
         if (renderer->first_packet_time == 0) {
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
             renderer->first_packet_time = raop_ntp_get_local_time(ntp);
-            buffer->nTimeStamp = ilclient_ticks_from_s64(renderer->first_packet_time);
-        } else {
-            buffer->nTimeStamp = ilclient_ticks_from_s64(pts);
+            if (!renderer->low_latency) buffer->nTimeStamp = ilclient_ticks_from_s64(renderer->first_packet_time);
         }
 
         if (OMX_EmptyThisBuffer(ILC_GET_HANDLE(renderer->audio_renderer), buffer) != OMX_ErrorNone) {
