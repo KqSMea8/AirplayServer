@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
         } else if (arg == "-a") {
             if (i == argc - 1) continue;
             std::string audio_device_name(argv[++i]);
-            audio_device = audio_device_name == "hdmi" ? AUDIO_DEVICE_NONE :
+            audio_device = audio_device_name == "hdmi" ? AUDIO_DEVICE_HDMI :
                            audio_device_name == "analog" ? AUDIO_DEVICE_ANALOG:
                            AUDIO_DEVICE_NONE;
         } else if (arg == "-h" || arg == "-v") {
