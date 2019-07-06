@@ -301,6 +301,18 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
         ilclient_change_component_state(renderer->video_renderer, OMX_StateExecuting);
     }
 
+    // Update the clock time
+    /*OMX_TIME_CONFIG_TIMESTAMPTYPE time_stamp;
+    memset(&time_stamp, 0, sizeof(OMX_TIME_CONFIG_TIMESTAMPTYPE));
+    time_stamp.nSize = sizeof(OMX_TIME_CONFIG_TIMESTAMPTYPE);
+    time_stamp.nVersion.nVersion = OMX_VERSION;
+    time_stamp.nPortIndex = 80;
+    time_stamp.nTimestamp = ilclient_ticks_from_s64(raop_ntp_get_local_time(ntp));
+    if (OMX_SetConfig(ilclient_get_handle(renderer->clock), OMX_IndexConfigTimeCurrentAudioReference,
+                      &time_stamp) != OMX_ErrorNone) {
+        logger_log(renderer->logger, LOGGER_DEBUG, "Could not set renderer clock time!");
+    }*/
+
     int offset = 0;
     while (offset < data_len) {
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
