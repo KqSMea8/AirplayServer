@@ -57,13 +57,14 @@ raop_buffer_init_key_iv(raop_buffer_t *raop_buffer,
     
     memcpy(raop_buffer->aeskey, eaeskey, 16);
     memcpy(raop_buffer->aesiv, aesiv, RAOP_AESIV_LEN);
-#ifdef DUMP_AUDIO
+
+    #ifdef DUMP_AUDIO
     if (file_keyiv != NULL) {
         fwrite(raop_buffer->aeskey, 16, 1, file_keyiv);
         fwrite(raop_buffer->aesiv, 16, 1, file_keyiv);
         fclose(file_keyiv);
     }
-#endif
+    #endif
 }
 
 raop_buffer_t *
@@ -95,14 +96,15 @@ raop_buffer_destroy(raop_buffer_t *raop_buffer)
 	if (raop_buffer) {
 		free(raop_buffer);
 	}
-#ifdef DUMP_AUDIO
+
+    #ifdef DUMP_AUDIO
     if (file_aac != NULL) {
         fclose(file_aac);
     }
     if (file_source != NULL) {
         fclose(file_source);
     }
-#endif
+    #endif
 
 }
 
@@ -112,7 +114,7 @@ seqnum_cmp(unsigned short s1, unsigned short s2)
 	return (s1 - s2);
 }
 
-#define DUMP_AUDIO
+//#define DUMP_AUDIO
 
 #ifdef DUMP_AUDIO
 static FILE* file_aac = NULL;
@@ -126,13 +128,13 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
 {
     assert(raop_buffer);
     int encryptedlen;
-#ifdef DUMP_AUDIO
+    #ifdef DUMP_AUDIO
     if (file_aac == NULL) {
         file_aac = fopen("/home/pi/Airplay.aac", "wb");
         file_source = fopen("/home/pi/Airplay.source", "wb");
         file_keyiv = fopen("/home/pi/Airplay.keyiv", "wb");
     }
-#endif
+    #endif
 
     /* Check packet data length is valid */
     if (datalen < 12 || datalen > RAOP_PACKET_LEN) {
@@ -143,14 +145,12 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
         return 0;
     }
     int payloadsize = datalen - 12;
-#ifdef DUMP_AUDIO
+    #ifdef DUMP_AUDIO
     // Undecrypted file
     if (file_source != NULL) {
         fwrite(&data[12], payloadsize, 1, file_source);
     }
-#endif
-    
-    //logger_log(raop_buffer->logger, LOGGER_DEBUG, "seqnum = %d payloadsize = %d", seqnum, payloadsize);
+    #endif
 
     // We only process samples we received in order
     // If this design leads to a noticeable amount of artifacts, reintroduce a buffer system
@@ -169,12 +169,12 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
     memcpy(output+encryptedlen, &data[12+encryptedlen], payloadsize-encryptedlen);
     *outputlen = payloadsize;
 
-#ifdef DUMP_AUDIO
+    #ifdef DUMP_AUDIO
     // Decrypted file
     if (file_aac != NULL) {
         fwrite(output, payloadsize, 1, file_aac);
     }
-#endif
+    #endif
 
     raop_buffer->last_seqnum = seqnum;
     raop_buffer->first_packet = false;
