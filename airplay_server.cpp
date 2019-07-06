@@ -33,7 +33,7 @@
 #include "renderers/video_renderer.h"
 #include "renderers/audio_renderer.h"
 
-#define VERSION "1.0"
+#define VERSION "1.1"
 
 #define DEFAULT_NAME "RPiPlay"
 #define DEFAULT_SHOW_BACKGROUND true

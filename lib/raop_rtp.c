@@ -50,9 +50,9 @@ struct raop_rtp_s {
     raop_rtp_sync_data_t sync_data[RAOP_RTP_SYNC_DATA_COUNT];
     int sync_data_index;
 
-    // Transmission Stats
-    float interarrival_jitter; // As defined by RTP RFC 3550, Section 6.4.1
-    unsigned int last_packet_transit_time;
+    // Transmission Stats, could be used if a playout buffer is needed
+    // float interarrival_jitter; // As defined by RTP RFC 3550, Section 6.4.1
+    // unsigned int last_packet_transit_time;
     //int transit = (packet_receive_time - packet_send_time);
     // int d = transit - last_packet_transit_time;
     // if (d < 0) d = -d;
