@@ -29,6 +29,7 @@
 #include "bcm_host.h"
 #include "ilclient.h"
 #include "../lib/threads.h"
+#include "h264-bitstream/h264_stream.h"
 
 /* 
  * H264 renderer using OpenMAX for hardware accelerated decoding
@@ -282,6 +283,38 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
     logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", data_len);
     renderer->input_frames++;
 
+    if (type == 0) {
+        // This reduces the Raspberry Pi H264 decode pipeline delay from about 11 to 6 frames for RPiPlay.
+        // Described at https://www.raspberrypi.org/forums/viewtopic.php?t=41053
+        logger_log(renderer->logger, LOGGER_DEBUG, "Injecting max_dec_frame_buffering");
+        uint8_t *modified_data = malloc(data_len * 2);
+        int sps_start, sps_end;
+        h264_stream_t* h = h264_new();
+        int sps_size = find_nal_unit(data, data_len, &sps_start, &sps_end);
+        int pps_size = data_len - 8 - sps_size;
+        if (sps_size > 0) {
+            read_nal_unit(h, &data[sps_start], sps_size);
+            h->sps->vui.bitstream_restriction_flag = 1;
+            h->sps->vui.max_dec_frame_buffering = 8; // It seems this is the lowest value that works for iOS and macOS
+
+            // Write the modified SPS NAL
+            int new_sps_size = write_nal_unit(h, modified_data + 3, data_len * 2) - 1;
+            modified_data[0] = 0;
+            modified_data[1] = 0;
+            modified_data[2] = 0;
+            modified_data[3] = 1;
+
+            // Copy the original PPS NAL
+            memcpy(modified_data + new_sps_size + 4, data + 4 + sps_size, pps_size + 4);
+
+            data = modified_data;
+            data_len = new_sps_size + pps_size + 8;
+        } else {
+            logger_log(renderer->logger, LOGGER_ERR, "Could not find sps boundaries");
+            free(modified_data);
+        }
+    }
+
     if (ilclient_remove_event(renderer->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Port settings changed!!");
 
@@ -300,18 +333,6 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
 
         ilclient_change_component_state(renderer->video_renderer, OMX_StateExecuting);
     }
-
-    // Update the clock time
-    /*OMX_TIME_CONFIG_TIMESTAMPTYPE time_stamp;
-    memset(&time_stamp, 0, sizeof(OMX_TIME_CONFIG_TIMESTAMPTYPE));
-    time_stamp.nSize = sizeof(OMX_TIME_CONFIG_TIMESTAMPTYPE);
-    time_stamp.nVersion.nVersion = OMX_VERSION;
-    time_stamp.nPortIndex = 80;
-    time_stamp.nTimestamp = ilclient_ticks_from_s64(raop_ntp_get_local_time(ntp));
-    if (OMX_SetConfig(ilclient_get_handle(renderer->clock), OMX_IndexConfigTimeCurrentAudioReference,
-                      &time_stamp) != OMX_ErrorNone) {
-        logger_log(renderer->logger, LOGGER_DEBUG, "Could not set renderer clock time!");
-    }*/
 
     int offset = 0;
     while (offset < data_len) {
@@ -345,6 +366,12 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
 
         int64_t video_delay = ((int64_t) raop_ntp_get_local_time(ntp)) - ((int64_t) pts);
         logger_log(renderer->logger, LOGGER_DEBUG, "Video delay is %lld", video_delay);
+    }
+
+    if (type == 0) {
+        // We overwrote the data buffer to inject the max_dec_frame_buffering before,
+        // so we need to free the data buffer here
+        free(data);
     }
 }
 

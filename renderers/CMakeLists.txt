@@ -7,6 +7,7 @@ if(UNIX AND NOT APPLE)
   	/opt/vc/src/hello_pi/libs/ilclient )
   
   add_subdirectory( fdk-aac )
+  add_subdirectory( h264-bitstream )
 
   include_directories( fdk-aac/libAACdec/include
       fdk-aac/libAACenc/include
@@ -38,9 +39,11 @@ if(UNIX AND NOT APPLE)
   add_library( renderers
           SHARED
           audio_renderer_rpi.c video_renderer_rpi.c)
-  target_link_libraries ( renderers ilclient play-lib fdk-aac )
+  target_link_libraries ( renderers ilclient play-lib fdk-aac h264-bitstream )
 else()
+  add_subdirectory( h264-bitstream )
   add_library( renderers
           SHARED
           audio_renderer_dummy.c video_renderer_dummy.c)
+  target_link_libraries ( renderers h264-bitstream )
 endif()
