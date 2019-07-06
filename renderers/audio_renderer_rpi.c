@@ -322,10 +322,7 @@ void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, u
             renderer->first_packet_time = raop_ntp_get_local_time(ntp);
             buffer->nTimeStamp = ilclient_ticks_from_s64(renderer->first_packet_time);
         } else {
-            OMX_TICKS timestamp;
-            timestamp.nLowPart = pts;
-            timestamp.nHighPart = pts >> 32;
-            buffer->nTimeStamp = timestamp;
+            buffer->nTimeStamp = ilclient_ticks_from_s64(pts);
         }
 
         if (OMX_EmptyThisBuffer(ILC_GET_HANDLE(renderer->audio_renderer), buffer) != OMX_ErrorNone) {

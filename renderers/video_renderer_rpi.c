@@ -102,6 +102,11 @@ void video_renderer_destroy_decoder(video_renderer_t *renderer) {
     ilclient_destroy(renderer->client);
 }
 
+void omx_event_handler(void *userdata, COMPONENT_T *comp, OMX_U32 data) {
+    video_renderer_t *renderer = (video_renderer_t*) userdata;
+    logger_log(renderer->logger, LOGGER_DEBUG, "Video renderer config change: %p: %d", comp, data);
+}
+
 int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     memset(renderer->components, 0, sizeof(renderer->components));
     memset(renderer->tunnels, 0, sizeof(renderer->tunnels));
@@ -135,6 +140,22 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
     }
     renderer->components[1] = renderer->video_renderer;
 
+    // Register to video stalls
+    OMX_CONFIG_REQUESTCALLBACKTYPE request_callback;
+    memset(&request_callback, 0, sizeof(OMX_CONFIG_REQUESTCALLBACKTYPE));
+    request_callback.nSize = sizeof(OMX_CONFIG_REQUESTCALLBACKTYPE);
+    request_callback.nVersion.nVersion = OMX_VERSION;
+    request_callback.nPortIndex = 131;
+    request_callback.nIndex = OMX_IndexConfigBufferStall;
+    request_callback.bEnable = OMX_TRUE;
+    if (OMX_SetConfig(ilclient_get_handle(renderer->video_decoder), OMX_IndexConfigRequestCallback,
+            &request_callback) != OMX_ErrorNone) {
+        logger_log(renderer->logger, LOGGER_DEBUG, "Could not request video stall callback");
+        return -14;
+    }
+    ilclient_set_configchanged_callback(renderer->client, omx_event_handler, renderer);
+
+    // Create clock
     if (ilclient_create_component(renderer->client, &renderer->clock, "clock",
                                   ILCLIENT_DISABLE_ALL_PORTS) != 0) {
         video_renderer_destroy_decoder(renderer);
@@ -144,6 +165,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
 
     // Set the reference clock to the video clock
     OMX_TIME_CONFIG_ACTIVEREFCLOCKTYPE active_ref_clock;
+    memset(&active_ref_clock, 0, sizeof(OMX_TIME_CONFIG_ACTIVEREFCLOCKTYPE));
     active_ref_clock.nSize = sizeof(OMX_TIME_CONFIG_ACTIVEREFCLOCKTYPE);
     active_ref_clock.nVersion.nVersion = OMX_VERSION;
     active_ref_clock.eClock = OMX_TIME_RefClockVideo;
@@ -155,8 +177,8 @@ int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
 
     // Setup clock
     OMX_TIME_CONFIG_CLOCKSTATETYPE clock_state;
-    memset(&clock_state, 0, sizeof(clock_state));
-    clock_state.nSize = sizeof(clock_state);
+    memset(&clock_state, 0, sizeof(OMX_TIME_CONFIG_CLOCKSTATETYPE));
+    clock_state.nSize = sizeof(OMX_TIME_CONFIG_CLOCKSTATETYPE);
     clock_state.nVersion.nVersion = OMX_VERSION;
     clock_state.eState = OMX_TIME_ClockStateWaitingForStartTime;
     clock_state.nWaitMask = 1;
@@ -292,18 +314,12 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
         buffer->nFilledLen = chunk_size;
         buffer->nOffset = 0;
 
-        OMX_TICKS timestamp;
-        timestamp.nLowPart = pts;
-        timestamp.nHighPart = pts >> 32;
-        buffer->nTimeStamp = timestamp;
+        buffer->nTimeStamp = ilclient_ticks_from_s64(pts);
 
         if (renderer->first_packet_time == 0) {
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
             renderer->first_packet_time = raop_ntp_get_local_time(ntp);
-            OMX_TICKS timestamp;
-            timestamp.nLowPart = renderer->first_packet_time;
-            timestamp.nHighPart = renderer->first_packet_time >> 32;
-            buffer->nTimeStamp = timestamp;
+            buffer->nTimeStamp = ilclient_ticks_from_s64(renderer->first_packet_time);
         }
 
         // Mark the last buffer if we had to split the data
