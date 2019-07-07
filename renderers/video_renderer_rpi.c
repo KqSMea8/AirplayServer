@@ -357,9 +357,9 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
             if (!renderer->low_latency) buffer->nTimeStamp = ilclient_ticks_from_s64(renderer->first_packet_time);
         }
 
-        // Mark the last buffer if we had to split the data
+        // Mark the last buffer if we had to split the data (probably not necessary)
         if (chunk_size < data_len && offset == data_len) {
-            buffer->nFlags = OMX_BUFFERFLAG_ENDOFNAL;
+            buffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME;
         }
 
         if (OMX_EmptyThisBuffer(ilclient_get_handle(renderer->video_decoder), buffer) != OMX_ErrorNone) {
