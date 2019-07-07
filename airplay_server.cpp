@@ -39,10 +39,11 @@
 #define DEFAULT_SHOW_BACKGROUND true
 #define DEFAULT_AUDIO_DEVICE AUDIO_DEVICE_HDMI
 #define DEFAULT_LOW_LATENCY false
+#define DEFAULT_DEBUG_LOG false
 #define DEFAULT_HW_ADDRESS { (char) 0x48, (char) 0x5d, (char) 0x60, (char) 0x7c, (char) 0xee, (char) 0x22 }
 
 int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device,
-        bool low_latency);
+        bool low_latency, bool debug_log);
 int stop_server();
 
 static bool running = false;
@@ -98,6 +99,7 @@ void print_info(char* name) {
     printf("-b                    Hide the black background behind the video\n");
     printf("-a (hdmi|analog|off)  Set audio output device\n");
     printf("-l                    Enable low-latency mode (disables render clock)\n");
+    printf("-d                    Enable debug logging\n");
     printf("-v/-h                 Displays this help and version information\n");
 }
 
@@ -109,6 +111,7 @@ int main(int argc, char *argv[]) {
     std::vector<char> server_hw_addr = DEFAULT_HW_ADDRESS;
     audio_device_t audio_device = DEFAULT_AUDIO_DEVICE;
     bool low_latency = DEFAULT_LOW_LATENCY;
+    bool debug_log = DEFAULT_DEBUG_LOG;
 
     // Parse arguments
     for (int i = 1; i < argc; i++) {
@@ -126,6 +129,8 @@ int main(int argc, char *argv[]) {
                            AUDIO_DEVICE_NONE;
         } else if (arg == "-l") {
             low_latency = !low_latency;
+        } else if (arg == "-d") {
+            debug_log = !debug_log;
         } else if (arg == "-h" || arg == "-v") {
             print_info(argv[0]);
             exit(0);
@@ -138,7 +143,7 @@ int main(int argc, char *argv[]) {
         parse_hw_addr(mac_address, server_hw_addr);
     }
  
-    if (start_server(server_hw_addr, server_name, show_background, audio_device, low_latency) != 0) {
+    if (start_server(server_hw_addr, server_name, show_background, audio_device, low_latency, debug_log) != 0) {
         return 1;
     }
 
@@ -193,7 +198,7 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 }
 
 int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device,
-        bool low_latency) {
+        bool low_latency, bool debug_log) {
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.audio_process = audio_process;
@@ -208,11 +213,11 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     }
 
     raop_set_log_callback(raop, log_callback, NULL);
-    raop_set_log_level(raop, RAOP_LOG_DEBUG);
+    raop_set_log_level(raop, debug_log ? RAOP_LOG_DEBUG : LOGGER_INFO);
 
     logger_t *render_logger = logger_init();
     logger_set_callback(render_logger, log_callback, NULL);
-    logger_set_level(render_logger, LOGGER_DEBUG);
+    logger_set_level(render_logger, debug_log ? LOGGER_DEBUG : LOGGER_INFO);
 
     if (low_latency) logger_log(render_logger, LOGGER_INFO, "Using low-latency mode");
 
