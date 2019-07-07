@@ -192,18 +192,19 @@ raop_rtp_mirror_thread(void *arg)
             /* Timeout happened */
             continue;
         } else if (ret == -1) {
-            logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Error in select");
+            logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror_thread error in select");
             break;
         }
+
         if (stream_fd == -1 && FD_ISSET(raop_rtp_mirror->mirror_data_sock, &rfds)) {
             struct sockaddr_storage saddr;
             socklen_t saddrlen;
 
-            logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Accepting client");
+            logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread accepting client");
             saddrlen = sizeof(saddr);
             stream_fd = accept(raop_rtp_mirror->mirror_data_sock, (struct sockaddr *)&saddr, &saddrlen);
             if (stream_fd == -1) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Error in accept %d %s", errno, strerror(errno));
+                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror_thread error in accept %d %s", errno, strerror(errno));
                 break;
             }
         }
@@ -219,10 +220,10 @@ raop_rtp_mirror_thread(void *arg)
             } while (readstart < 128);
 
             if (ret == 0) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "TCP socket closed");
+                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread tcp socket closed");
                 break;
             } else if (ret == -1) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Error in recv");
+                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread error in recv");
                 break;
             }
 
@@ -367,7 +368,7 @@ raop_rtp_mirror_thread(void *arg)
         closesocket(stream_fd);
     }
 
-    logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Exiting TCP raop_rtp_mirror_thread thread");
+    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Exiting TCP raop_rtp_mirror_thread thread");
 
     #ifdef DUMP_H264
     fclose(file);
@@ -381,6 +382,7 @@ raop_rtp_mirror_thread(void *arg)
 void
 raop_rtp_start_mirror(raop_rtp_mirror_t *raop_rtp_mirror, int use_udp, unsigned short *mirror_data_lport)
 {
+    logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "raop_rtp_mirror starting mirroring");
     int use_ipv6 = 0;
 
     assert(raop_rtp_mirror);
@@ -396,7 +398,7 @@ raop_rtp_start_mirror(raop_rtp_mirror_t *raop_rtp_mirror, int use_udp, unsigned 
     }
     use_ipv6 = 0;
     if (raop_rtp_init_mirror_sockets(raop_rtp_mirror, use_ipv6) < 0) {
-        logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Initializing sockets failed");
+        logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "Initializing sockets failed");
         MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
         return;
     }

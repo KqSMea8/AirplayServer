@@ -206,10 +206,8 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     raop_cbs.audio_set_volume = audio_set_volume;
     raop = raop_init(10, &raop_cbs);
     if (raop == NULL) {
-        LOGE("raop = NULL");
+        LOGE("Error initializing raop!");
         return -1;
-    } else {
-        LOGD("raop init success");
     }
 
     raop_set_log_callback(raop, log_callback, NULL);
@@ -239,7 +237,6 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     unsigned short port = 0;
     raop_start(raop, &port);
     raop_set_port(raop, port);
-    LOGD("raop port = % d", raop_get_port(raop));
 
     int error;
     dnssd = dnssd_init(name.c_str(), strlen(name.c_str()), hw_addr.data(), hw_addr.size(), &error);

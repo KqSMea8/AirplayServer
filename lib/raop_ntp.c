@@ -114,7 +114,7 @@ raop_ntp_parse_remote_address(raop_ntp_t *raop_ntp, const unsigned char *remote_
     }
     memset(current, 0, sizeof(current));
     sprintf(current, "%d.%d.%d.%d", remote_addr[0], remote_addr[1], remote_addr[2], remote_addr[3]);
-    logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp_parse_remote ip = %s", current);
+    logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp parse remote ip = %s", current);
     ret = netutils_parse_address(family, current,
                                  &raop_ntp->remote_saddr,
                                  sizeof(raop_ntp->remote_saddr));
@@ -237,12 +237,12 @@ raop_ntp_thread(void *arg)
         byteutils_put_ntp_timestamp(request, 24, send_time);
         int send_len = sendto(raop_ntp->tsock, (char *)request, sizeof(request), 0,
                               (struct sockaddr *) &raop_ntp->remote_saddr, raop_ntp->remote_saddr_len);
-        logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp_thread send_len = %d", send_len);
+        logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp send_len = %d", send_len);
 
         // Read response
         response_len = recvfrom(raop_ntp->tsock, (char *)response, sizeof(response), 0,
                                 (struct sockaddr *) &raop_ntp->remote_saddr, &raop_ntp->remote_saddr_len);
-        logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp_thread receive time type_t packetlen = %d", response_len);
+        logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp receive time type_t packetlen = %d", response_len);
 
         int64_t t3 = (int64_t) raop_ntp_get_local_time(raop_ntp);
         // Local time of the client when the NTP request packet leaves the client
@@ -297,14 +297,14 @@ raop_ntp_thread(void *arg)
         MUTEX_UNLOCK(raop_ntp->wait_mutex);
     }
 
-    logger_log(raop_ntp->logger, LOGGER_INFO, "Exiting UDP raop_ntp_thread thread");
+    logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp exiting thread");
     return 0;
 }
 
 void
 raop_ntp_start(raop_ntp_t *raop_ntp, unsigned short *timing_lport)
 {
-    logger_log(raop_ntp->logger, LOGGER_INFO, "raop_ntp_start");
+    logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp starting time");
     int use_ipv6 = 0;
 
     assert(raop_ntp);
@@ -321,7 +321,7 @@ raop_ntp_start(raop_ntp_t *raop_ntp, unsigned short *timing_lport)
     }
     use_ipv6 = 0;
     if (raop_ntp_init_socket(raop_ntp, use_ipv6) < 0) {
-        logger_log(raop_ntp->logger, LOGGER_INFO, "Initializing timing socket failed");
+        logger_log(raop_ntp->logger, LOGGER_ERR, "raop_ntp initializing timing socket failed");
         MUTEX_UNLOCK(raop_ntp->run_mutex);
         return;
     }
@@ -353,7 +353,7 @@ raop_ntp_stop(raop_ntp_t *raop_ntp)
     /* Join the thread */
     THREAD_JOIN(raop_ntp->thread);
 
-    logger_log(raop_ntp->logger, LOGGER_DEBUG, "Stopping time thread");
+    logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp stopping time thread");
 
     MUTEX_LOCK(raop_ntp->wait_mutex);
     COND_SIGNAL(raop_ntp->wait_cond);
@@ -361,7 +361,7 @@ raop_ntp_stop(raop_ntp_t *raop_ntp)
 
     THREAD_JOIN(raop_ntp->thread);
 
-    logger_log(raop_ntp->logger, LOGGER_DEBUG, "Stopped time thread");
+    logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp stopped time thread");
 
     if (raop_ntp->tsock != -1) closesocket(raop_ntp->tsock);
 

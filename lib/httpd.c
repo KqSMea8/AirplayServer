@@ -241,7 +241,7 @@ httpd_thread(void *arg)
 			continue;
 		} else if (ret == -1) {
 			/* FIXME: Error happened */
-			logger_log(httpd->logger, LOGGER_INFO, "Error in select");
+			logger_log(httpd->logger, LOGGER_ERR, "Error in select");
 			break;
 		}
 
@@ -290,7 +290,7 @@ httpd_thread(void *arg)
 			/* Parse HTTP request from data read from connection */
 			http_request_add_data(connection->request, buffer, ret);
 			if (http_request_has_error(connection->request)) {
-				logger_log(httpd->logger, LOGGER_INFO, "Error in parsing: %s", http_request_get_error_name(connection->request));
+				logger_log(httpd->logger, LOGGER_ERR, "Error in parsing: %s", http_request_get_error_name(connection->request));
 				httpd_remove_connection(httpd, connection);
 				continue;
 			}
@@ -317,7 +317,7 @@ httpd_thread(void *arg)
 						ret = send(connection->socket_fd, data+written, datalen-written, 0);
 						if (ret == -1) {
 							/* FIXME: Error happened */
-							logger_log(httpd->logger, LOGGER_INFO, "Error in sending data");
+							logger_log(httpd->logger, LOGGER_ERR, "Error in sending data");
 							break;
 						}
 						written += ret;
@@ -360,7 +360,7 @@ httpd_thread(void *arg)
 		httpd->server_fd6 = -1;
 	}
 
-	logger_log(httpd->logger, LOGGER_INFO, "Exiting HTTP thread");
+	logger_log(httpd->logger, LOGGER_DEBUG, "Exiting HTTP thread");
 
 	return 0;
 }

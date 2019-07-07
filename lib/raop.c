@@ -182,7 +182,7 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response)
 
 		rtpinfo = http_request_get_header(request, "RTP-Info");
 		if (rtpinfo) {
-			logger_log(conn->raop->logger, LOGGER_INFO, "Flush with RTP-Info: %s", rtpinfo);
+			logger_log(conn->raop->logger, LOGGER_DEBUG, "Flush with RTP-Info: %s", rtpinfo);
 			if (!strncmp(rtpinfo, "seq=", 4)) {
 				next_seq = strtol(rtpinfo+4, NULL, 10);
 			}
@@ -193,7 +193,6 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response)
 			logger_log(conn->raop->logger, LOGGER_WARNING, "RAOP not initialized at FLUSH");
 		}
 	} else if (!strcmp(method, "TEARDOWN")) {
-		logger_log(conn->raop->logger, LOGGER_INFO, "Received teardown, but not closing connection!");
 		//http_response_add_header(*response, "Connection", "close");
 		if (conn->raop_rtp != NULL && raop_rtp_is_running(conn->raop_rtp)) {
 			/* Destroy our RTP session */

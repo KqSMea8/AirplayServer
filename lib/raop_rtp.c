@@ -120,7 +120,7 @@ raop_rtp_parse_remote(raop_rtp_t *raop_rtp, const unsigned char *remote, int rem
     }
     memset(current, 0, sizeof(current));
     sprintf(current, "%d.%d.%d.%d", remote[0], remote[1], remote[2], remote[3]);
-    logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_parse_remote ip = %s", current);
+    logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp parse remote ip = %s", current);
     ret = netutils_parse_address(family, current,
                                  &raop_rtp->remote_saddr,
                                  sizeof(raop_rtp->remote_saddr));
@@ -203,7 +203,7 @@ raop_rtp_resend_callback(void *opaque, unsigned short seqnum, unsigned short cou
     addr = (struct sockaddr *)&raop_rtp->control_saddr;
     addrlen = raop_rtp->control_saddr_len;
 
-    logger_log(raop_rtp->logger, LOGGER_DEBUG, "Got resend request %d %d", seqnum, count);
+    logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp got resend request %d %d", seqnum, count);
     ourseqnum = raop_rtp->control_seqnum++;
 
     /* Fill the request buffer */
@@ -218,7 +218,7 @@ raop_rtp_resend_callback(void *opaque, unsigned short seqnum, unsigned short cou
 
     ret = sendto(raop_rtp->csock, (const char *)packet, sizeof(packet), 0, addr, addrlen);
     if (ret == -1) {
-        logger_log(raop_rtp->logger, LOGGER_WARNING, "Resend failed: %d", SOCKET_GET_ERROR());
+        logger_log(raop_rtp->logger, LOGGER_WARNING, "raop_rtp resend failed: %d", SOCKET_GET_ERROR());
     }
 
     return 0;
@@ -379,7 +379,7 @@ void raop_rtp_sync_clock(raop_rtp_t *raop_rtp, uint32_t rtp_time, uint64_t ntp_t
     int64_t correction = avg_offset - raop_rtp->rtp_sync_offset;
     raop_rtp->rtp_sync_offset = avg_offset;
 
-    logger_log(raop_rtp->logger, LOGGER_INFO, "raop_rtp sync correction=%lld", correction);
+    logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp sync correction=%lld", correction);
 }
 
 uint64_t raop_rtp_convert_rtp_time(raop_rtp_t *raop_rtp, uint32_t rtp_time) {
@@ -390,7 +390,6 @@ static THREAD_RETVAL
 raop_rtp_thread_udp(void *arg)
 {
     raop_rtp_t *raop_rtp = arg;
-    logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp");
     unsigned char packet[RAOP_PACKET_LEN];
     unsigned int packetlen;
     struct sockaddr_storage saddr;
@@ -427,7 +426,7 @@ raop_rtp_thread_udp(void *arg)
             /* Timeout happened */
             continue;
         } else if (ret == -1) {
-            /* FIXME: Error happened */
+            logger_log(raop_rtp->logger, LOGGER_ERR, "raop_rtp error in select");
             break;
         }
 
@@ -439,11 +438,11 @@ raop_rtp_thread_udp(void *arg)
            memcpy(&raop_rtp->control_saddr, &saddr, saddrlen);
            raop_rtp->control_saddr_len = saddrlen;
            int type_c = packet[1] & ~0x80;
-           logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp type_c 0x%02x, packetlen = %d", type_c, packetlen);
+           logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp type_c 0x%02x, packetlen = %d", type_c, packetlen);
            if (type_c == 0x56) {
                // Handling retransmitted packets, removing 4 bytes from the header
                // The current audio processing design doesn't support retransmitted samples
-               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp did not handle retransmitted sample");
+               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp did not handle retransmitted sample");
            } else if (type_c == 0x54 && packetlen >= 20) {
                // The unit for the rtp clock is 1 / sample rate = 1 / 44100
                uint32_t sync_rtp = byteutils_get_int_be(packet, 4) - 11025;
@@ -456,7 +455,7 @@ raop_rtp_thread_udp(void *arg)
                        sync_ntp_remote, sync_ntp_local, sync_rtp, next_rtp);
                raop_rtp_sync_clock(raop_rtp, sync_rtp, sync_ntp_local);
            } else {
-               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp unknown packet");
+               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp unknown packet");
            }
         }
 
@@ -479,7 +478,7 @@ raop_rtp_thread_udp(void *arg)
                 uint32_t rtp_timestamp =  (packet[4] << 24) | (packet[5] << 16) | (packet[6] << 8) | packet[7];
                 uint64_t ntp_timestamp = raop_rtp_convert_rtp_time(raop_rtp, rtp_timestamp);
                 uint64_t ntp_now = raop_ntp_get_local_time(raop_rtp->ntp);
-                logger_log(raop_rtp->logger, LOGGER_DEBUG, "audio ntp = %llu, now = %llu, latency=%lld, rtp=%u",
+                logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp audio: ntp = %llu, now = %llu, latency=%lld, rtp=%u",
                         ntp_timestamp, ntp_now, ((int64_t) ntp_now) - ((int64_t) ntp_timestamp), rtp_timestamp);
 
                 int decrypt_ret = raop_buffer_decrypt(raop_rtp->buffer, packet, (unsigned char*) audiobuf, packetlen, &audiobuflen);
@@ -501,7 +500,7 @@ raop_rtp_thread_udp(void *arg)
 
         }
     }
-    logger_log(raop_rtp->logger, LOGGER_INFO, "Exiting UDP raop_rtp_thread_udp thread");
+    logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp exiting thread");
     return 0;
 }
 
@@ -510,7 +509,7 @@ void
 raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_rport,
                      unsigned short *control_lport, unsigned short *data_lport)
 {
-    logger_log(raop_rtp->logger, LOGGER_INFO, "raop_rtp_start_audio");
+    logger_log(raop_rtp->logger, LOGGER_INFO, "raop_rtp starting audio");
     int use_ipv6 = 0;
 
     assert(raop_rtp);
@@ -528,7 +527,7 @@ raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_r
     }
     use_ipv6 = 0;
     if (raop_rtp_init_sockets(raop_rtp, use_ipv6, use_udp) < 0) {
-        logger_log(raop_rtp->logger, LOGGER_INFO, "Initializing sockets failed");
+        logger_log(raop_rtp->logger, LOGGER_ERR, "raop_rtp initializing sockets failed");
         MUTEX_UNLOCK(raop_rtp->run_mutex);
         return;
     }
