@@ -18,7 +18,7 @@ aux_source_directory(${fdk_aac_path}/libSACdec/src fdk_aac_sac_dec_src)
 aux_source_directory(${fdk_aac_path}/libSACenc/src fdk_aac_sac_enc_src)
 
 add_library(fdk-aac
-        SHARED
+        STATIC
   ${fdk_aac_dec_src}
   ${fdk_aac_enc_src}
   ${fdk_aac_pcm_utils_src}

@@ -9,4 +9,4 @@ add_subdirectory(lib)
 add_subdirectory(renderers)
 
 add_executable( rpiplay airplay_server.cpp)
-target_link_libraries ( rpiplay renderers play-lib ed25519 )
+target_link_libraries ( rpiplay renderers airplay )

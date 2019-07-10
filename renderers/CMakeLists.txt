@@ -24,7 +24,7 @@ if(UNIX AND NOT APPLE)
   aux_source_directory(/opt/vc/src/hello_pi/libs/ilclient/ ilclient_src)
   set(DIR_SRCS ${ilclient_src})
   add_library( ilclient
-          SHARED
+          STATIC
           ${DIR_SRCS})
   
   find_library( BRCM_GLES_V2 brcmGLESv2 HINTS /opt/vc/lib/ )
@@ -37,13 +37,13 @@ if(UNIX AND NOT APPLE)
                          ${BCM_HOST} ${VCOS} ${VCHIQ_ARM} pthread rt m ) 
   
   add_library( renderers
-          SHARED
+          STATIC
           audio_renderer_rpi.c video_renderer_rpi.c)
-  target_link_libraries ( renderers ilclient play-lib fdk-aac h264-bitstream )
+  target_link_libraries ( renderers ilclient airplay fdk-aac h264-bitstream )
 else()
   add_subdirectory( h264-bitstream )
   add_library( renderers
-          SHARED
+          STATIC
           audio_renderer_dummy.c video_renderer_dummy.c)
   target_link_libraries ( renderers h264-bitstream )
 endif()
