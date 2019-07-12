@@ -317,6 +317,7 @@ raop_rtp_process_events(raop_rtp_t *raop_rtp, void *cb_data)
 
     /* Call set_volume callback if changed */
     if (volume_changed) {
+        raop_buffer_flush(raop_rtp->buffer, flush);
         if (raop_rtp->callbacks.audio_set_volume) {
             raop_rtp->callbacks.audio_set_volume(raop_rtp->callbacks.cls, cb_data, volume);
         }
@@ -440,9 +441,14 @@ raop_rtp_thread_udp(void *arg)
            int type_c = packet[1] & ~0x80;
            logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp type_c 0x%02x, packetlen = %d", type_c, packetlen);
            if (type_c == 0x56) {
-               // Handling retransmitted packets, removing 4 bytes from the header
-               // The current audio processing design doesn't support retransmitted samples
-               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp did not handle retransmitted sample");
+               /* Handle resent data packet */
+               uint32_t rtp_timestamp =  (packet[4 + 4] << 24) | (packet[4 + 5] << 16) | (packet[4 + 6] << 8) | packet[4 + 7];
+               uint64_t ntp_timestamp = raop_rtp_convert_rtp_time(raop_rtp, rtp_timestamp);
+               uint64_t ntp_now = raop_ntp_get_local_time(raop_rtp->ntp);
+               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp audio resent: ntp = %llu, now = %llu, latency=%lld, rtp=%u",
+                          ntp_timestamp, ntp_now, ((int64_t) ntp_now) - ((int64_t) ntp_timestamp), rtp_timestamp);
+               int result = raop_buffer_enqueue(raop_rtp->buffer, packet + 4, packetlen - 4, ntp_timestamp, 1);
+               assert(result >= 0);
            } else if (type_c == 0x54 && packetlen >= 20) {
                // The unit for the rtp clock is 1 / sample rate = 1 / 44100
                uint32_t sync_rtp = byteutils_get_int_be(packet, 4) - 11025;
@@ -472,8 +478,6 @@ raop_rtp_thread_udp(void *arg)
             // Len = 16 appears if there is no time
             if (packetlen >= 12) {
                 int no_resend = (raop_rtp->control_rport == 0);// false
-                void *audiobuf = malloc(packetlen);
-                unsigned int audiobuflen;
 
                 uint32_t rtp_timestamp =  (packet[4] << 24) | (packet[5] << 16) | (packet[6] << 8) | packet[7];
                 uint64_t ntp_timestamp = raop_rtp_convert_rtp_time(raop_rtp, rtp_timestamp);
@@ -481,21 +485,26 @@ raop_rtp_thread_udp(void *arg)
                 logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp audio: ntp = %llu, now = %llu, latency=%lld, rtp=%u",
                         ntp_timestamp, ntp_now, ((int64_t) ntp_now) - ((int64_t) ntp_timestamp), rtp_timestamp);
 
-                int decrypt_ret = raop_buffer_decrypt(raop_rtp->buffer, packet, (unsigned char*) audiobuf, packetlen, &audiobuflen);
-                assert(decrypt_ret >= 0);
+                int result = raop_buffer_enqueue(raop_rtp->buffer, packet, packetlen, ntp_timestamp, 1);
+                assert(result >= 0);
 
-                if (decrypt_ret == 1) {
+                // Render continuous buffer entries
+                void *payload = NULL;
+                unsigned int payload_size;
+                uint64_t timestamp;
+                while ((payload = raop_buffer_dequeue(raop_rtp->buffer, &payload_size, &timestamp, no_resend))) {
                     aac_decode_struct aac_data;
-                    aac_data.data_len = audiobuflen;
-                    aac_data.data = audiobuf;
-                    aac_data.pts = ntp_timestamp;
+                    aac_data.data_len = payload_size;
+                    aac_data.data = payload;
+                    aac_data.pts = timestamp;
                     raop_rtp->callbacks.audio_process(raop_rtp->callbacks.cls, raop_rtp->ntp, &aac_data);
+                    free(payload);
                 }
 
-                free(audiobuf);
-
                 /* Handle possible resend requests */
-                // Current design doesn't support resends
+                if (!no_resend) {
+                    raop_buffer_handle_resends(raop_rtp->buffer, raop_rtp_resend_callback, raop_rtp);
+                }
             }
 
         }
@@ -662,6 +671,9 @@ raop_rtp_stop(raop_rtp_t *raop_rtp)
 
     if (raop_rtp->csock != -1) closesocket(raop_rtp->csock);
     if (raop_rtp->dsock != -1) closesocket(raop_rtp->dsock);
+
+    /* Flush buffer into initial state */
+    raop_buffer_flush(raop_rtp->buffer, -1);
 
     /* Mark thread as joined */
     MUTEX_LOCK(raop_rtp->run_mutex);
