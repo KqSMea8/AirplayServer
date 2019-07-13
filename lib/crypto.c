@@ -51,6 +51,7 @@ aes_ctx_t *aes_init(const uint8_t *key, const uint8_t *iv, const EVP_CIPHER *typ
 	ctx->cipher_ctx = EVP_CIPHER_CTX_new();
 	assert(ctx->cipher_ctx != NULL);
 
+	ctx->block_offset = 0;
 	ctx->direction = direction;
 
 	if (direction == AES_ENCRYPT) {
