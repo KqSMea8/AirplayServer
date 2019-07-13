@@ -199,6 +199,14 @@ raop_ntp_init_socket(raop_ntp_t *raop_ntp, int use_ipv6)
         goto sockets_cleanup;
     }
 
+    // We're calling recvfrom without knowing whether there is any data, so we need a timeout
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 3000;
+    if (setsockopt(tsock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        goto sockets_cleanup;
+    }
+
     /* Set socket descriptors */
     raop_ntp->tsock = tsock;
 
@@ -217,7 +225,7 @@ raop_ntp_thread(void *arg)
     raop_ntp_t *raop_ntp = arg;
     assert(raop_ntp);
     unsigned char response[128];
-    unsigned int response_len;
+    int response_len;
     unsigned char request[32] = {0x80, 0xd2, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };
@@ -242,6 +250,10 @@ raop_ntp_thread(void *arg)
         // Read response
         response_len = recvfrom(raop_ntp->tsock, (char *)response, sizeof(response), 0,
                                 (struct sockaddr *) &raop_ntp->remote_saddr, &raop_ntp->remote_saddr_len);
+        if (response_len < 0) {
+            logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp receive timeout");
+            break;
+        }
         logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp receive time type_t packetlen = %d", response_len);
 
         int64_t t3 = (int64_t) raop_ntp_get_local_time(raop_ntp);
@@ -296,6 +308,11 @@ raop_ntp_thread(void *arg)
         pthread_cond_timedwait(&raop_ntp->wait_cond, &raop_ntp->wait_mutex, &wait_time);
         MUTEX_UNLOCK(raop_ntp->wait_mutex);
     }
+
+    // Ensure running reflects the actual state
+    MUTEX_LOCK(raop_ntp->run_mutex);
+    raop_ntp->running = false;
+    MUTEX_UNLOCK(raop_ntp->run_mutex);
 
     logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp exiting thread");
     return 0;

@@ -421,7 +421,6 @@ raop_rtp_thread_udp(void *arg)
         FD_SET(raop_rtp->csock, &rfds);
         FD_SET(raop_rtp->dsock, &rfds);
 
-
         ret = select(nfds, &rfds, NULL, NULL, &tv);
         if (ret == 0) {
             /* Timeout happened */
@@ -509,7 +508,14 @@ raop_rtp_thread_udp(void *arg)
 
         }
     }
+
+    // Ensure running reflects the actual state
+    MUTEX_LOCK(raop_rtp->run_mutex);
+    raop_rtp->running = false;
+    MUTEX_UNLOCK(raop_rtp->run_mutex);
+
     logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp exiting thread");
+
     return 0;
 }
 

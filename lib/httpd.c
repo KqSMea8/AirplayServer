@@ -240,8 +240,7 @@ httpd_thread(void *arg)
 			/* Timeout happened */
 			continue;
 		} else if (ret == -1) {
-			/* FIXME: Error happened */
-			logger_log(httpd->logger, LOGGER_ERR, "Error in select");
+			logger_log(httpd->logger, LOGGER_ERR, "httpd error in select");
 			break;
 		}
 
@@ -249,7 +248,8 @@ httpd_thread(void *arg)
 		    httpd->server_fd4 != -1 && FD_ISSET(httpd->server_fd4, &rfds)) {
 			ret = httpd_accept_connection(httpd, httpd->server_fd4, 0);
 			if (ret == -1) {
-				break;
+                logger_log(httpd->logger, LOGGER_ERR, "httpd error in accept ipv4");
+                break;
 			} else if (ret == 0) {
 				continue;
 			}
@@ -258,6 +258,7 @@ httpd_thread(void *arg)
 		    httpd->server_fd6 != -1 && FD_ISSET(httpd->server_fd6, &rfds)) {
 			ret = httpd_accept_connection(httpd, httpd->server_fd6, 1);
 			if (ret == -1) {
+                logger_log(httpd->logger, LOGGER_ERR, "httpd error in accept ipv6");
 				break;
 			} else if (ret == 0) {
 				continue;
@@ -279,7 +280,7 @@ httpd_thread(void *arg)
 				assert(connection->request);
 			}
 
-			logger_log(httpd->logger, LOGGER_DEBUG, "Receiving on socket %d", connection->socket_fd);
+			logger_log(httpd->logger, LOGGER_DEBUG, "httpd receiving on socket %d", connection->socket_fd);
 			ret = recv(connection->socket_fd, buffer, sizeof(buffer), 0);
 			if (ret == 0) {
 				logger_log(httpd->logger, LOGGER_INFO, "Connection closed for socket %d", connection->socket_fd);
@@ -290,7 +291,7 @@ httpd_thread(void *arg)
 			/* Parse HTTP request from data read from connection */
 			http_request_add_data(connection->request, buffer, ret);
 			if (http_request_has_error(connection->request)) {
-				logger_log(httpd->logger, LOGGER_ERR, "Error in parsing: %s", http_request_get_error_name(connection->request));
+				logger_log(httpd->logger, LOGGER_ERR, "httpd error in parsing: %s", http_request_get_error_name(connection->request));
 				httpd_remove_connection(httpd, connection);
 				continue;
 			}
@@ -316,8 +317,7 @@ httpd_thread(void *arg)
 					while (written < datalen) {
 						ret = send(connection->socket_fd, data+written, datalen-written, 0);
 						if (ret == -1) {
-							/* FIXME: Error happened */
-							logger_log(httpd->logger, LOGGER_ERR, "Error in sending data");
+							logger_log(httpd->logger, LOGGER_ERR, "httpd error in sending data");
 							break;
 						}
 						written += ret;
@@ -328,7 +328,7 @@ httpd_thread(void *arg)
 						httpd_remove_connection(httpd, connection);
 					}
 				} else {
-					logger_log(httpd->logger, LOGGER_INFO, "Didn't get response");
+					logger_log(httpd->logger, LOGGER_WARNING, "httpd didn't get response");
 				}
 				http_response_destroy(response);
 			} else {
@@ -359,6 +359,11 @@ httpd_thread(void *arg)
 		closesocket(httpd->server_fd6);
 		httpd->server_fd6 = -1;
 	}
+
+    // Ensure running reflects the actual state
+    MUTEX_LOCK(httpd->run_mutex);
+    httpd->running = 0;
+    MUTEX_UNLOCK(httpd->run_mutex);
 
 	logger_log(httpd->logger, LOGGER_DEBUG, "Exiting HTTP thread");
 

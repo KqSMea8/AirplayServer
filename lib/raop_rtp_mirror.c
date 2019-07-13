@@ -207,6 +207,15 @@ raop_rtp_mirror_thread(void *arg)
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror_thread error in accept %d %s", errno, strerror(errno));
                 break;
             }
+
+            // We're calling recv for a certain amount of data, so we need a timeout
+            struct timeval tv;
+            tv.tv_sec = 0;
+            tv.tv_usec = 5000;
+            if (setsockopt(stream_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror_thread could not set stream socket timeout %d %s", errno, strerror(errno));
+                break;
+            }
         }
 
         if (stream_fd != -1 && FD_ISSET(stream_fd, &rfds)) {
@@ -236,8 +245,16 @@ raop_rtp_mirror_thread(void *arg)
             do {
                 // Payload data
                 ret = recv(stream_fd, payload + readstart, payload_size - readstart, 0);
+                if (ret <= 0) break;
                 readstart = readstart + ret;
             } while (readstart < payload_size);
+            if (ret == 0) {
+                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread tcp socket closed");
+                break;
+            } else if (ret == -1) {
+                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread error in recv");
+                break;
+            }
 
             if (payload_type == 0) {
                 // Normal video data (VCL NAL)
@@ -368,13 +385,18 @@ raop_rtp_mirror_thread(void *arg)
         closesocket(stream_fd);
     }
 
-    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Exiting TCP raop_rtp_mirror_thread thread");
-
     #ifdef DUMP_H264
     fclose(file);
     fclose(file_source);
     fclose(file_len);
     #endif
+
+    // Ensure running reflects the actual state
+    MUTEX_LOCK(raop_rtp_mirror->run_mutex);
+    raop_rtp_mirror->running = false;
+    MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
+
+    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Exiting TCP raop_rtp_mirror_thread thread");
 
     return 0;
 }
@@ -459,9 +481,9 @@ raop_rtp_init_mirror_sockets(raop_rtp_mirror_t *raop_rtp_mirror, int use_ipv6)
     }
 
     /* Listen to the data socket if using TCP */
-    if (listen(dsock, 1) < 0)
+    if (listen(dsock, 1) < 0) {
         goto sockets_cleanup;
-
+    }
 
     /* Set socket descriptors */
     raop_rtp_mirror->mirror_data_sock = dsock;
