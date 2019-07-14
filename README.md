@@ -14,6 +14,7 @@ For best performance:
 * Use a wired network connection
 * Make sure the DUMP flags are *not* active
 * Make sure you *don't* use the -d debug log flag
+* Use a fast micro sd card
 
 By using OpenSSL for AES decryption, I was able to speed up the decryption of video packets from up to 0.2 seconds to up to 0.007 seconds for large packets (On the Pi Zero). Average is now more like 0.002 seconds.
 
