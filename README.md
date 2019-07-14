@@ -8,11 +8,14 @@ The goal is to make it run smoothly even on a Raspberry Pi Zero.
 
 Screen mirroring and audio works for iOS 9 or newer. Recent macOS versions also seem to be compatible. The GPU is used for decoding the h264 video stream. The Pi has no hardware acceleration for audio (AirPlay mirroring uses AAC), so the FDK-AAC decoder is used for that.
 
-Both works fine on a Raspberry Pi 3B+. Unfortunately, it seems the Pi Zero is too slow for decoding audio at a reasonable speed. In order to get audio decoding fast enough for the Pi Zero, we likely have to use a different (lower-quality) AAC decoder library. 
+Both audio and video work fine on a Raspberry Pi 3B+ and a Raspberry Pi Zero, though playback is a bit smoother on the 3B+.
+
+For best performance:
+* Use a wired network connection
+* Make sure the DUMP flags are *not* active
+* Make sure you *don't* use the -d debug log flag
 
 By using OpenSSL for AES decryption, I was able to speed up the decryption of video packets from up to 0.2 seconds to up to 0.007 seconds for large packets (On the Pi Zero). Average is now more like 0.002 seconds.
-
-If you are seeing long playback pauses, make sure the DUMP flags are not active. Disk IO can slow down the whole program when dumping to files.
 
 There still are some minor issues. Have a look at the TODO list below.
 
@@ -30,9 +33,13 @@ The following packages are required for building on Raspbian:
 * **libssl-dev** (for crypto primitives)
 * **ilclient** and Broadcom's OpenMAX stack as present in `/opt/vc` in Raspbian.
 
-For building on a fresh Raspbian Stretch or Buster install, these steps should be run in the 
-project's root folder:
+For downloading the code, use these commands:
+```bash
+git clone https://github.com/FD-/RPiPlay.git
+cd RPiPlay
+```
 
+For building on a fresh Raspbian Stretch or Buster install, these steps should be run:
 ```bash
 sudo apt-get install cmake
 sudo apt-get install libavahi-compat-libdnssd-dev
@@ -42,7 +49,6 @@ cd build
 cmake ..
 make
 ```
-
 
 # Usage
 
@@ -54,6 +60,10 @@ At the moment, these options are implemented:
 **-b**: Hide the black background behind the video
 
 **-a (hdmi|analog|off)**: Set audio output device
+
+**-l**: Enables low-latency mode. Low-latency mode reduces latency by effectively rendering audio and video frames as soon as they are received, ignoring the associated timestamps. As a side effect, playback will be choppy and audio-video sync will be noticably off.
+
+**-d**: Enables debug logging. Will lead to choppy playback due to heavy console output.
 
 **-v/-h**: Displays short help and version information
 
@@ -75,11 +85,11 @@ The code in this repository accumulated from various sources over time. Here is 
 * **Juho Vähä-Herttua** and contributors: Created an AirPlay audio server called [ShairPlay](https://github.com/juhovh/shairplay), including support for Fairplay based on PlayFair. Most of the code in `lib/` originally stems from this project. License: GNU LGPLv2.1+
 * **EstebanKubata**: Created a FairPlay library called [PlayFair](https://github.com/EstebanKubata/playfair). Located in the `lib/playfair` folder. License: GNU GPL
 * **Jonathan Beck, Nikias Bassen** and contributors: Created a library for plist handling called [libplist](https://github.com/libimobiledevice/libplist). Located in the `lib/plist` folder. License: GNU LGPLv2.1+
-
 * **Joyent, Inc and contributors**: Created an http library called [http-parser](https://github.com/nodejs/http-parser). Located at `lib/http_parser.(c|h)`. License: MIT
 * **Google, Inc and contributors**: Created an implementation of curve 25519 called [curve25519-donna](https://github.com/agl/curve25519-donna). Located in the `lib/curve25519` folder. License: 3-Clause BSD
 * **Team XBMC**: Managed to show a black background for OpenMAX video rendering. This code is used in the video renderer. License: GNU GPL
 * **Orson Peters and contributors**: An implementation of [Ed25519](https://github.com/orlp/ed25519) signatures. Located in `lib/ed25519`, License: ZLIB; Depends on LibTomCrypt, License: Public Domain
+* **Alex Izvorski and contributors**: Wrote [h264bitstream](https://github.com/aizvorski/h264bitstream), a library for manipulation h264 streams. Used for reducing delay in the Raspberry Pi video pipeline. Located in the `renderers/h264-bitstream` folder. License: GNU LGPLv2.1
 
 
 # Contributing
@@ -91,11 +101,21 @@ Your contributions are more than welcome!
 
 # Todo
 
-* Properly handle timestamps and ntp
-  => Smooth playback, low latency
 * Use OpenSSL for the elliptic curve crypto?
-* Bug: Sometimes cannot be stopped
-  => Likely deadlock in time thread
+* Bug: Sometimes cannot be stopped?
+
+# Changelog
+
+### Version 1.1
+
+* Now audio and video work on Raspberry Pi Zero. I don't know what exactly did the trick, but static compilation seems to have helped. Actually, it seems like the CPU is not the bottleneck here, as CPU usage is only about 50% while running RPiPlay. Probably micro sd card speed matters. 
+* Smoother video due to clock syncing
+* Correct lip-sync due to clock syncing
+* Lower latency due to injecting max_dec_frame_buffering into SPS NAL 
+* Disabled debug logging by default
+* Added command line flag for debug logging
+* Added command line flag for unsynchronized low-latency mode
+* Bug fixes
 
 
 # AirPlay protocol versions
