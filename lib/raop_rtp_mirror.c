@@ -87,7 +87,7 @@ raop_rtp_parse_remote(raop_rtp_mirror_t *raop_rtp_mirror, const unsigned char *r
     }
     memset(current, 0, sizeof(current));
     sprintf(current, "%d.%d.%d.%d", remote[0], remote[1], remote[2], remote[3]);
-    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_parse_remote ip = %s", current);
+    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror parse remote ip = %s", current);
     ret = netutils_parse_address(family, current,
                                  &raop_rtp_mirror->remote_saddr,
                                  sizeof(raop_rtp_mirror->remote_saddr));
@@ -192,7 +192,7 @@ raop_rtp_mirror_thread(void *arg)
             /* Timeout happened */
             continue;
         } else if (ret == -1) {
-            logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror_thread error in select");
+            logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in select");
             break;
         }
 
@@ -200,11 +200,11 @@ raop_rtp_mirror_thread(void *arg)
             struct sockaddr_storage saddr;
             socklen_t saddrlen;
 
-            logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread accepting client");
+            logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror accepting client");
             saddrlen = sizeof(saddr);
             stream_fd = accept(raop_rtp_mirror->mirror_data_sock, (struct sockaddr *)&saddr, &saddrlen);
             if (stream_fd == -1) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror_thread error in accept %d %s", errno, strerror(errno));
+                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in accept %d %s", errno, strerror(errno));
                 break;
             }
 
@@ -213,7 +213,7 @@ raop_rtp_mirror_thread(void *arg)
             tv.tv_sec = 0;
             tv.tv_usec = 5000;
             if (setsockopt(stream_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror_thread could not set stream socket timeout %d %s", errno, strerror(errno));
+                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror could not set stream socket timeout %d %s", errno, strerror(errno));
                 break;
             }
         }
@@ -229,10 +229,10 @@ raop_rtp_mirror_thread(void *arg)
             } while (readstart < 128);
 
             if (ret == 0) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread tcp socket closed");
+                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror tcp socket closed");
                 break;
             } else if (ret == -1) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread error in header recv: %d", errno);
+                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in header recv: %d", errno);
                 break;
             }
 
@@ -249,10 +249,10 @@ raop_rtp_mirror_thread(void *arg)
                 readstart = readstart + ret;
             } while (readstart < payload_size);
             if (ret == 0) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread tcp socket closed");
+                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror tcp socket closed");
                 break;
             } else if (ret == -1) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread error in recv: %d", errno);
+                logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in recv: %d", errno);
                 break;
             }
 
@@ -268,7 +268,7 @@ raop_rtp_mirror_thread(void *arg)
                 uint64_t ntp_timestamp = raop_ntp_convert_remote_time(raop_rtp_mirror->ntp, ntp_timestamp_remote);
 
                 uint64_t ntp_now = raop_ntp_get_local_time(raop_rtp_mirror->ntp);
-                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "video ntp = %llu, now = %llu, latency = %lld",
+                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror video ntp = %llu, now = %llu, latency = %lld",
                            ntp_timestamp, ntp_now, ((int64_t) ntp_now) - ((int64_t) ntp_timestamp));
 
                 #ifdef DUMP_H264
@@ -323,7 +323,7 @@ raop_rtp_mirror_thread(void *arg)
                 float height_source = byteutils_get_float(packet, 44);
                 float width = byteutils_get_float(packet, 56);
                 float height = byteutils_get_float(packet, 60);
-                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "width_source = %f height_source = %f width = %f height = %f",
+                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror width_source = %f height_source = %f width = %f height = %f",
                            width_source, height_source, width, height);
 
                 // The sps_pps is not encrypted
@@ -335,13 +335,13 @@ raop_rtp_mirror_thread(void *arg)
                 h264.reserved_6_and_nal = payload[4];
                 h264.reserved_3_and_sps = payload[5];
                 h264.sps_size = (short) (((payload[6] & 255) << 8) + (payload[7] & 255));
-                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "sps size = %d", h264.sps_size);
+                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror sps size = %d", h264.sps_size);
                 h264.sequence_parameter_set = malloc(h264.sps_size);
                 memcpy(h264.sequence_parameter_set, payload + 8, h264.sps_size);
                 h264.number_of_pps = payload[h264.sps_size + 8];
                 h264.pps_size = (short) (((payload[h264.sps_size + 9] & 2040) + payload[h264.sps_size + 10]) & 255);
                 h264.picture_parameter_set = malloc(h264.pps_size);
-                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "pps size = %d", h264.pps_size);
+                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror pps size = %d", h264.pps_size);
                 memcpy(h264.picture_parameter_set, payload + h264.sps_size + 11, h264.pps_size);
 
                 if (h264.sps_size + h264.pps_size < 102400) {
@@ -396,7 +396,7 @@ raop_rtp_mirror_thread(void *arg)
     raop_rtp_mirror->running = false;
     MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
 
-    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "Exiting TCP raop_rtp_mirror_thread thread");
+    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror exiting TCP thread");
 
     return 0;
 }
@@ -420,7 +420,7 @@ raop_rtp_start_mirror(raop_rtp_mirror_t *raop_rtp_mirror, int use_udp, unsigned 
     }
     use_ipv6 = 0;
     if (raop_rtp_init_mirror_sockets(raop_rtp_mirror, use_ipv6) < 0) {
-        logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "Initializing sockets failed");
+        logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror initializing sockets failed");
         MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
         return;
     }

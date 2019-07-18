@@ -251,7 +251,7 @@ raop_ntp_thread(void *arg)
         response_len = recvfrom(raop_ntp->tsock, (char *)response, sizeof(response), 0,
                                 (struct sockaddr *) &raop_ntp->remote_saddr, &raop_ntp->remote_saddr_len);
         if (response_len < 0) {
-            logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp receive timeout");
+            logger_log(raop_ntp->logger, LOGGER_ERR, "raop_ntp receive timeout");
             break;
         }
         logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp receive time type_t packetlen = %d", response_len);
