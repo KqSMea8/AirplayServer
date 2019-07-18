@@ -232,6 +232,7 @@ raop_rtp_mirror_thread(void *arg)
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror tcp socket closed");
                 break;
             } else if (ret == -1) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) continue; // Timeouts can happen even if the connection is fine
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in header recv: %d", errno);
                 break;
             }
@@ -248,10 +249,12 @@ raop_rtp_mirror_thread(void *arg)
                 if (ret <= 0) break;
                 readstart = readstart + ret;
             } while (readstart < payload_size);
+            
             if (ret == 0) {
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror tcp socket closed");
                 break;
             } else if (ret == -1) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) continue; // Timeouts can happen even if the connection is fine
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in recv: %d", errno);
                 break;
             }
