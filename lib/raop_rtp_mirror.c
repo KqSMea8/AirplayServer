@@ -149,11 +149,13 @@ static THREAD_RETVAL
 raop_rtp_mirror_thread(void *arg)
 {
     raop_rtp_mirror_t *raop_rtp_mirror = arg;
+    assert(raop_rtp_mirror);
+	
     int stream_fd = -1;
     unsigned char packet[128];
     memset(packet, 0 , 128);
+    unsigned char* payload = NULL;
     unsigned int readstart = 0;
-    assert(raop_rtp_mirror);
 
     #ifdef DUMP_H264
     // C decrypted
@@ -221,17 +223,16 @@ raop_rtp_mirror_thread(void *arg)
         if (stream_fd != -1 && FD_ISSET(stream_fd, &rfds)) {
 
             // The first 128 bytes are some kind of header for the payload that follows
-
-            do {
+            while (payload == NULL && readstart < 128) {
                 ret = recv(stream_fd, packet + readstart, 128 - readstart, 0);
                 if (ret <= 0) break;
                 readstart = readstart + ret;
-            } while (readstart < 128);
+            }
 
-            if (ret == 0) {
+            if (payload == NULL && ret == 0) {
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror tcp socket closed");
                 break;
-            } else if (ret == -1) {
+            } else if (payload == NULL && ret == -1) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) continue; // Timeouts can happen even if the connection is fine
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in header recv: %d", errno);
                 break;
@@ -241,14 +242,17 @@ raop_rtp_mirror_thread(void *arg)
             unsigned short payload_type = byteutils_get_short(packet, 4) & 0xff;
             unsigned short payload_option = byteutils_get_short(packet, 6);
 
-            unsigned char* payload = malloc(payload_size);
-            readstart = 0;
-            do {
+            if (payload == NULL) {
+	        payload = malloc(payload_size);
+                readstart = 0;
+	    }
+			
+            while (readstart < payload_size) {
                 // Payload data
                 ret = recv(stream_fd, payload + readstart, payload_size - readstart, 0);
                 if (ret <= 0) break;
                 readstart = readstart + ret;
-            } while (readstart < payload_size);
+            }
             
             if (ret == 0) {
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror tcp socket closed");
@@ -378,7 +382,8 @@ raop_rtp_mirror_thread(void *arg)
             }
 
             free(payload);
-            memset(packet, 0 , 128);
+            payload = NULL;
+            memset(packet, 0, 128);
             readstart = 0;
         }
     }
