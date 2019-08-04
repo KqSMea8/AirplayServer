@@ -298,7 +298,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
         if (sps_size > 0) {
             read_nal_unit(h, &data[sps_start], sps_size);
             h->sps->vui.bitstream_restriction_flag = 1;
-            h->sps->vui.max_dec_frame_buffering = 8; // It seems this is the lowest value that works for iOS and macOS
+            h->sps->vui.max_dec_frame_buffering = 4; // It seems this is the lowest value that works for iOS and macOS
 
             // Write the modified SPS NAL
             int new_sps_size = write_nal_unit(h, modified_data + 3, data_len * 2) - 1;
