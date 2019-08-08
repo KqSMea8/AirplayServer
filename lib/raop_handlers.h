@@ -26,13 +26,13 @@ typedef void (*raop_handler_t)(raop_conn_t *, http_request_t *,
 
 static void
 raop_handler_info(raop_conn_t *conn,
-					   http_request_t *request, http_response_t *response,
-					   char **response_data, int *response_datalen)
+                       http_request_t *request, http_response_t *response,
+                       char **response_data, int *response_datalen)
 {
-	assert(conn->raop->dnssd);
+    assert(conn->raop->dnssd);
 
     int airplay_txt_len = 0;
-	char *airplay_txt = dnssd_get_airplay_txt(conn->raop->dnssd, &airplay_txt_len);
+    char *airplay_txt = dnssd_get_airplay_txt(conn->raop->dnssd, &airplay_txt_len);
 
     int name_len = 0;
     char *name = dnssd_get_name(conn->raop->dnssd, &name_len);
@@ -169,25 +169,25 @@ raop_handler_pairsetup(raop_conn_t *conn,
                        http_request_t *request, http_response_t *response,
                        char **response_data, int *response_datalen)
 {
-	unsigned char public_key[32];
-	const char *data;
-	int datalen;
+    unsigned char public_key[32];
+    const char *data;
+    int datalen;
 
-	data = http_request_get_data(request, &datalen);
-	if (datalen != 32) {
-		logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-setup data");
-		return;
-	}
+    data = http_request_get_data(request, &datalen);
+    if (datalen != 32) {
+        logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-setup data");
+        return;
+    }
 
-	pairing_get_public_key(conn->raop->pairing, public_key);
+    pairing_get_public_key(conn->raop->pairing, public_key);
     pairing_session_set_setup_status(conn->pairing);
 
-	*response_data = malloc(sizeof(public_key));
-	if (*response_data) {
-		http_response_add_header(response, "Content-Type", "application/octet-stream");
-		memcpy(*response_data, public_key, sizeof(public_key));
-		*response_datalen = sizeof(public_key);
-	}
+    *response_data = malloc(sizeof(public_key));
+    if (*response_data) {
+        http_response_add_header(response, "Content-Type", "application/octet-stream");
+        memcpy(*response_data, public_key, sizeof(public_key));
+        *response_datalen = sizeof(public_key);
+    }
 }
 
 static void
@@ -198,54 +198,54 @@ raop_handler_pairverify(raop_conn_t *conn,
     if (pairing_session_check_handshake_status(conn->pairing)) {
         return;
     }
-	unsigned char public_key[32];
-	unsigned char signature[64];
-	const unsigned char *data;
-	int datalen;
+    unsigned char public_key[32];
+    unsigned char signature[64];
+    const unsigned char *data;
+    int datalen;
 
-	data = (unsigned char *) http_request_get_data(request, &datalen);
-	if (datalen < 4) {
-		logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
-		return;
-	}
-	switch (data[0]) {
-	case 1:
-		if (datalen != 4 + 32 + 32) {
-			logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
-			return;
-		}
-		/* We can fall through these errors, the result will just be garbage... */
-		if (pairing_session_handshake(conn->pairing, data + 4, data + 4 + 32)) {
-			logger_log(conn->raop->logger, LOGGER_ERR, "Error initializing pair-verify handshake");
-		}
-		if (pairing_session_get_public_key(conn->pairing, public_key)) {
-			logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ECDH public key");
-		}
-		if (pairing_session_get_signature(conn->pairing, signature)) {
-			logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ED25519 signature");
-		}
-		*response_data = malloc(sizeof(public_key) + sizeof(signature));
-		if (*response_data) {
-			http_response_add_header(response, "Content-Type", "application/octet-stream");
-			memcpy(*response_data, public_key, sizeof(public_key));
-			memcpy(*response_data + sizeof(public_key), signature, sizeof(signature));
-			*response_datalen = sizeof(public_key) + sizeof(signature);
-		}
-		break;
-	case 0:
-		if (datalen != 4 + 64) {
-			logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
-			return;
-		}
+    data = (unsigned char *) http_request_get_data(request, &datalen);
+    if (datalen < 4) {
+        logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
+        return;
+    }
+    switch (data[0]) {
+    case 1:
+        if (datalen != 4 + 32 + 32) {
+            logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
+            return;
+        }
+        /* We can fall through these errors, the result will just be garbage... */
+        if (pairing_session_handshake(conn->pairing, data + 4, data + 4 + 32)) {
+            logger_log(conn->raop->logger, LOGGER_ERR, "Error initializing pair-verify handshake");
+        }
+        if (pairing_session_get_public_key(conn->pairing, public_key)) {
+            logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ECDH public key");
+        }
+        if (pairing_session_get_signature(conn->pairing, signature)) {
+            logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ED25519 signature");
+        }
+        *response_data = malloc(sizeof(public_key) + sizeof(signature));
+        if (*response_data) {
+            http_response_add_header(response, "Content-Type", "application/octet-stream");
+            memcpy(*response_data, public_key, sizeof(public_key));
+            memcpy(*response_data + sizeof(public_key), signature, sizeof(signature));
+            *response_datalen = sizeof(public_key) + sizeof(signature);
+        }
+        break;
+    case 0:
+        if (datalen != 4 + 64) {
+            logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
+            return;
+        }
 
-		if (pairing_session_finish(conn->pairing, data + 4)) {
-			logger_log(conn->raop->logger, LOGGER_ERR, "Incorrect pair-verify signature");
-			http_response_set_disconnect(response, 1);
-			return;
-		}
+        if (pairing_session_finish(conn->pairing, data + 4)) {
+            logger_log(conn->raop->logger, LOGGER_ERR, "Incorrect pair-verify signature");
+            http_response_set_disconnect(response, 1);
+            return;
+        }
         http_response_add_header(response, "Content-Type", "application/octet-stream");
-		break;
-	}
+        break;
+    }
 }
 
 static void
@@ -253,38 +253,38 @@ raop_handler_fpsetup(raop_conn_t *conn,
                         http_request_t *request, http_response_t *response,
                         char **response_data, int *response_datalen)
 {
-	const unsigned char *data;
-	int datalen;
+    const unsigned char *data;
+    int datalen;
 
-	data = (unsigned char *) http_request_get_data(request, &datalen);
-	if (datalen == 16) {
-		*response_data = malloc(142);
-		if (*response_data) {
+    data = (unsigned char *) http_request_get_data(request, &datalen);
+    if (datalen == 16) {
+        *response_data = malloc(142);
+        if (*response_data) {
             http_response_add_header(response, "Content-Type", "application/octet-stream");
-			if (!fairplay_setup(conn->fairplay, data, (unsigned char *) *response_data)) {
-				*response_datalen = 142;
-			} else {
-				// Handle error?
-				free(*response_data);
-				*response_data = NULL;
-			}
-		}
-	} else if (datalen == 164) {
-		*response_data = malloc(32);
-		if (*response_data) {
+            if (!fairplay_setup(conn->fairplay, data, (unsigned char *) *response_data)) {
+                *response_datalen = 142;
+            } else {
+                // Handle error?
+                free(*response_data);
+                *response_data = NULL;
+            }
+        }
+    } else if (datalen == 164) {
+        *response_data = malloc(32);
+        if (*response_data) {
             http_response_add_header(response, "Content-Type", "application/octet-stream");
-			if (!fairplay_handshake(conn->fairplay, data, (unsigned char *) *response_data)) {
-				*response_datalen = 32;
-			} else {
-				// Handle error?
-				free(*response_data);
-				*response_data = NULL;
-			}
-		}
-	} else {
-		logger_log(conn->raop->logger, LOGGER_ERR, "Invalid fp-setup data length");
-		return;
-	}
+            if (!fairplay_handshake(conn->fairplay, data, (unsigned char *) *response_data)) {
+                *response_datalen = 32;
+            } else {
+                // Handle error?
+                free(*response_data);
+                *response_data = NULL;
+            }
+        }
+    } else {
+        logger_log(conn->raop->logger, LOGGER_ERR, "Invalid fp-setup data length");
+        return;
+    }
 }
 
 static void
@@ -292,7 +292,7 @@ raop_handler_options(raop_conn_t *conn,
                      http_request_t *request, http_response_t *response,
                      char **response_data, int *response_datalen)
 {
-	http_response_add_header(response, "Public", "SETUP, RECORD, PAUSE, FLUSH, TEARDOWN, OPTIONS, GET_PARAMETER, SET_PARAMETER");
+    http_response_add_header(response, "Public", "SETUP, RECORD, PAUSE, FLUSH, TEARDOWN, OPTIONS, GET_PARAMETER, SET_PARAMETER");
 }
 
 static void
@@ -469,43 +469,43 @@ raop_handler_get_parameter(raop_conn_t *conn,
                            http_request_t *request, http_response_t *response,
                            char **response_data, int *response_datalen)
 {
-	const char *content_type;
-	const char *data;
-	int datalen;
+    const char *content_type;
+    const char *data;
+    int datalen;
 
-	content_type = http_request_get_header(request, "Content-Type");
-	data = http_request_get_data(request, &datalen);
-	if (!strcmp(content_type, "text/parameters")) {
-		const char *current = data;
+    content_type = http_request_get_header(request, "Content-Type");
+    data = http_request_get_data(request, &datalen);
+    if (!strcmp(content_type, "text/parameters")) {
+        const char *current = data;
 
-		while (current) {
-			const char *next;
-			int handled = 0;
+        while (current) {
+            const char *next;
+            int handled = 0;
 
-			/* This is a bit ugly, but seems to be how airport works too */
-			if (!strncmp(current, "volume\r\n", 8)) {
-				const char volume[] = "volume: 0.0\r\n";
+            /* This is a bit ugly, but seems to be how airport works too */
+            if (!strncmp(current, "volume\r\n", 8)) {
+                const char volume[] = "volume: 0.0\r\n";
 
-				http_response_add_header(response, "Content-Type", "text/parameters");
-				*response_data = strdup(volume);
-				if (*response_data) {
-					*response_datalen = strlen(*response_data);
-				}
-				handled = 1;
-			}
+                http_response_add_header(response, "Content-Type", "text/parameters");
+                *response_data = strdup(volume);
+                if (*response_data) {
+                    *response_datalen = strlen(*response_data);
+                }
+                handled = 1;
+            }
 
-			next = strstr(current, "\r\n");
-			if (next && !handled) {
-				logger_log(conn->raop->logger, LOGGER_WARNING,
-				           "Found an unknown parameter: %.*s", (next - current), current);
-				current = next + 2;
-			} else if (next) {
-				current = next + 2;
-			} else {
-				current = NULL;
-			}
-		}
-	}
+            next = strstr(current, "\r\n");
+            if (next && !handled) {
+                logger_log(conn->raop->logger, LOGGER_WARNING,
+                           "Found an unknown parameter: %.*s", (next - current), current);
+                current = next + 2;
+            } else if (next) {
+                current = next + 2;
+            } else {
+                current = NULL;
+            }
+        }
+    }
 }
 
 static void
@@ -513,45 +513,45 @@ raop_handler_set_parameter(raop_conn_t *conn,
                            http_request_t *request, http_response_t *response,
                            char **response_data, int *response_datalen)
 {
-	const char *content_type;
-	const char *data;
-	int datalen;
+    const char *content_type;
+    const char *data;
+    int datalen;
 
-	content_type = http_request_get_header(request, "Content-Type");
-	data = http_request_get_data(request, &datalen);
-	if (!strcmp(content_type, "text/parameters")) {
-		char *datastr;
-		datastr = calloc(1, datalen+1);
-		if (data && datastr && conn->raop_rtp) {
-			memcpy(datastr, data, datalen);
-			if (!strncmp(datastr, "volume: ", 8)) {
-				float vol = 0.0;
-				sscanf(datastr+8, "%f", &vol);
-				raop_rtp_set_volume(conn->raop_rtp, vol);
-			} else if (!strncmp(datastr, "progress: ", 10)) {
-				unsigned int start, curr, end;
-				sscanf(datastr+10, "%u/%u/%u", &start, &curr, &end);
-				raop_rtp_set_progress(conn->raop_rtp, start, curr, end);
-			}
-		} else if (!conn->raop_rtp) {
-			logger_log(conn->raop->logger, LOGGER_WARNING, "RAOP not initialized at SET_PARAMETER");
-		}
-		free(datastr);
-	} else if (!strcmp(content_type, "image/jpeg") || !strcmp(content_type, "image/png")) {
-		logger_log(conn->raop->logger, LOGGER_INFO, "Got image data of %d bytes", datalen);
-		if (conn->raop_rtp) {
-			raop_rtp_set_coverart(conn->raop_rtp, data, datalen);
-		} else {
-			logger_log(conn->raop->logger, LOGGER_WARNING, "RAOP not initialized at SET_PARAMETER coverart");
-		}
-	} else if (!strcmp(content_type, "application/x-dmap-tagged")) {
-		logger_log(conn->raop->logger, LOGGER_INFO, "Got metadata of %d bytes", datalen);
-		if (conn->raop_rtp) {
-			raop_rtp_set_metadata(conn->raop_rtp, data, datalen);
-		} else {
-			logger_log(conn->raop->logger, LOGGER_WARNING, "RAOP not initialized at SET_PARAMETER metadata");
-		}
-	}
+    content_type = http_request_get_header(request, "Content-Type");
+    data = http_request_get_data(request, &datalen);
+    if (!strcmp(content_type, "text/parameters")) {
+        char *datastr;
+        datastr = calloc(1, datalen+1);
+        if (data && datastr && conn->raop_rtp) {
+            memcpy(datastr, data, datalen);
+            if (!strncmp(datastr, "volume: ", 8)) {
+                float vol = 0.0;
+                sscanf(datastr+8, "%f", &vol);
+                raop_rtp_set_volume(conn->raop_rtp, vol);
+            } else if (!strncmp(datastr, "progress: ", 10)) {
+                unsigned int start, curr, end;
+                sscanf(datastr+10, "%u/%u/%u", &start, &curr, &end);
+                raop_rtp_set_progress(conn->raop_rtp, start, curr, end);
+            }
+        } else if (!conn->raop_rtp) {
+            logger_log(conn->raop->logger, LOGGER_WARNING, "RAOP not initialized at SET_PARAMETER");
+        }
+        free(datastr);
+    } else if (!strcmp(content_type, "image/jpeg") || !strcmp(content_type, "image/png")) {
+        logger_log(conn->raop->logger, LOGGER_INFO, "Got image data of %d bytes", datalen);
+        if (conn->raop_rtp) {
+            raop_rtp_set_coverart(conn->raop_rtp, data, datalen);
+        } else {
+            logger_log(conn->raop->logger, LOGGER_WARNING, "RAOP not initialized at SET_PARAMETER coverart");
+        }
+    } else if (!strcmp(content_type, "application/x-dmap-tagged")) {
+        logger_log(conn->raop->logger, LOGGER_INFO, "Got metadata of %d bytes", datalen);
+        if (conn->raop_rtp) {
+            raop_rtp_set_metadata(conn->raop_rtp, data, datalen);
+        } else {
+            logger_log(conn->raop->logger, LOGGER_WARNING, "RAOP not initialized at SET_PARAMETER metadata");
+        }
+    }
 }
 
 
