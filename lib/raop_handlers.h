@@ -451,7 +451,7 @@ raop_handler_setup(raop_conn_t *conn,
                 }
 
                 default:
-                    logger_log(conn->raop->logger, LOGGER_ERR, "SETUP tries to setup stream of unknown type %d", type);
+                    logger_log(conn->raop->logger, LOGGER_ERR, "SETUP tries to setup stream of unknown type %llu", type);
                     http_response_set_disconnect(response, 1);
                     break;
             }
