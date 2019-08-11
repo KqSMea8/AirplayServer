@@ -53,7 +53,7 @@ make
 
 # Usage
 
-Start the airplay_server executable and an AirPlay mirror target device will appear in the network.
+Start the rpiplay executable and an AirPlay mirror target device will appear in the network.
 At the moment, these options are implemented:
 
 **-n name**: Specify the network name of the AirPlay server
