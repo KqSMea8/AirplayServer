@@ -246,6 +246,10 @@ raop_ntp_thread(void *arg)
         int send_len = sendto(raop_ntp->tsock, (char *)request, sizeof(request), 0,
                               (struct sockaddr *) &raop_ntp->remote_saddr, raop_ntp->remote_saddr_len);
         logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp send_len = %d", send_len);
+        if (send_len < 0) {
+            logger_log(raop_ntp->logger, LOGGER_ERR, "raop_ntp error sending request");
+            break;
+        }
 
         // Read response
         response_len = recvfrom(raop_ntp->tsock, (char *)response, sizeof(response), 0,
@@ -367,20 +371,20 @@ raop_ntp_stop(raop_ntp_t *raop_ntp)
     raop_ntp->running = 0;
     MUTEX_UNLOCK(raop_ntp->run_mutex);
 
-    /* Join the thread */
-    THREAD_JOIN(raop_ntp->thread);
-
     logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp stopping time thread");
 
     MUTEX_LOCK(raop_ntp->wait_mutex);
     COND_SIGNAL(raop_ntp->wait_cond);
     MUTEX_UNLOCK(raop_ntp->wait_mutex);
 
+    if (raop_ntp->tsock != -1) {
+        closesocket(raop_ntp->tsock);
+        raop_ntp->tsock = -1;
+    }
+
     THREAD_JOIN(raop_ntp->thread);
 
     logger_log(raop_ntp->logger, LOGGER_DEBUG, "raop_ntp stopped time thread");
-
-    if (raop_ntp->tsock != -1) closesocket(raop_ntp->tsock);
 
     /* Mark thread as joined */
     MUTEX_LOCK(raop_ntp->run_mutex);

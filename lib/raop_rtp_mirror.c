@@ -218,6 +218,8 @@ raop_rtp_mirror_thread(void *arg)
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror could not set stream socket timeout %d %s", errno, strerror(errno));
                 break;
             }
+
+            readstart = 0;
         }
 
         if (stream_fd != -1 && FD_ISSET(stream_fd, &rfds)) {
@@ -231,7 +233,9 @@ raop_rtp_mirror_thread(void *arg)
 
             if (payload == NULL && ret == 0) {
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror tcp socket closed");
-                break;
+                FD_CLR(stream_fd, &rfds);
+                stream_fd = -1;
+                continue;
             } else if (payload == NULL && ret == -1) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) continue; // Timeouts can happen even if the connection is fine
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in header recv: %d", errno);
@@ -243,9 +247,9 @@ raop_rtp_mirror_thread(void *arg)
             unsigned short payload_option = byteutils_get_short(packet, 6);
 
             if (payload == NULL) {
-	        payload = malloc(payload_size);
+	            payload = malloc(payload_size);
                 readstart = 0;
-	    }
+	        }
 			
             while (readstart < payload_size) {
                 // Payload data
@@ -455,11 +459,13 @@ void raop_rtp_mirror_stop(raop_rtp_mirror_t *raop_rtp_mirror) {
     raop_rtp_mirror->running = 0;
     MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
 
+    if (raop_rtp_mirror->mirror_data_sock != -1) {
+        closesocket(raop_rtp_mirror->mirror_data_sock);
+        raop_rtp_mirror->mirror_data_sock = -1;
+    }
+
     /* Join the thread */
     THREAD_JOIN(raop_rtp_mirror->thread_mirror);
-
-
-    if (raop_rtp_mirror->mirror_data_sock != -1) closesocket(raop_rtp_mirror->mirror_data_sock);
 
     /* Mark thread as joined */
     MUTEX_LOCK(raop_rtp_mirror->run_mutex);
@@ -472,6 +478,7 @@ void raop_rtp_mirror_destroy(raop_rtp_mirror_t *raop_rtp_mirror) {
         raop_rtp_mirror_stop(raop_rtp_mirror);
         MUTEX_DESTROY(raop_rtp_mirror->run_mutex);
         mirror_buffer_destroy(raop_rtp_mirror->buffer);
+        free(raop_rtp_mirror);
     }
 }
 
