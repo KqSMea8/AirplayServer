@@ -319,20 +319,20 @@ raop_rtp_process_events(raop_rtp_t *raop_rtp, void *cb_data)
     if (volume_changed) {
         raop_buffer_flush(raop_rtp->buffer, flush);
         if (raop_rtp->callbacks.audio_set_volume) {
-            raop_rtp->callbacks.audio_set_volume(raop_rtp->callbacks.cls, cb_data, volume);
+            raop_rtp->callbacks.audio_set_volume(raop_rtp->callbacks.cls, volume);
         }
     }
 
     /* Handle flush if requested */
     if (flush != NO_FLUSH) {
         if (raop_rtp->callbacks.audio_flush) {
-            raop_rtp->callbacks.audio_flush(raop_rtp->callbacks.cls, cb_data);
+            raop_rtp->callbacks.audio_flush(raop_rtp->callbacks.cls);
         }
     }
 
     if (metadata != NULL) {
         if (raop_rtp->callbacks.audio_set_metadata) {
-            raop_rtp->callbacks.audio_set_metadata(raop_rtp->callbacks.cls, cb_data, metadata, metadata_len);
+            raop_rtp->callbacks.audio_set_metadata(raop_rtp->callbacks.cls, metadata, metadata_len);
         }
         free(metadata);
         metadata = NULL;
@@ -340,7 +340,7 @@ raop_rtp_process_events(raop_rtp_t *raop_rtp, void *cb_data)
 
     if (coverart != NULL) {
         if (raop_rtp->callbacks.audio_set_coverart) {
-            raop_rtp->callbacks.audio_set_coverart(raop_rtp->callbacks.cls, cb_data, coverart, coverart_len);
+            raop_rtp->callbacks.audio_set_coverart(raop_rtp->callbacks.cls, coverart, coverart_len);
         }
         free(coverart);
         coverart = NULL;
@@ -357,7 +357,7 @@ raop_rtp_process_events(raop_rtp_t *raop_rtp, void *cb_data)
 
     if (progress_changed) {
         if (raop_rtp->callbacks.audio_set_progress) {
-            raop_rtp->callbacks.audio_set_progress(raop_rtp->callbacks.cls, cb_data, progress_start, progress_curr, progress_end);
+            raop_rtp->callbacks.audio_set_progress(raop_rtp->callbacks.cls, progress_start, progress_curr, progress_end);
         }
     }
     return 0;

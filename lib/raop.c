@@ -234,6 +234,9 @@ conn_destroy(void *ptr)
         /* This is done in case TEARDOWN was not called */
         raop_rtp_mirror_destroy(conn->raop_rtp_mirror);
     }
+
+    conn->raop->callbacks.video_flush(conn->raop->callbacks.cls);
+
 	free(conn->local);
 	free(conn->remote);
 	pairing_session_destroy(conn->pairing);

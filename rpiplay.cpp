@@ -167,7 +167,15 @@ extern "C" void video_process(void *cls, raop_ntp_t *ntp, h264_decode_struct *da
     video_renderer_render_buffer(video_renderer, ntp, data->data, data->data_len, data->pts, data->frame_type);
 }
 
-extern "C" void audio_set_volume(void *cls, void *session, float volume) {
+extern "C" void audio_flush(void *cls) {
+    audio_renderer_flush(audio_renderer);
+}
+
+extern "C" void video_flush(void *cls) {
+    video_renderer_flush(video_renderer);
+}
+
+extern "C" void audio_set_volume(void *cls, float volume) {
     if (audio_renderer != NULL) {
         audio_renderer_set_volume(audio_renderer, volume);
     }
@@ -203,7 +211,10 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.audio_process = audio_process;
     raop_cbs.video_process = video_process;
+    raop_cbs.audio_flush = audio_flush;
+    raop_cbs.video_flush = video_flush;
     raop_cbs.audio_set_volume = audio_set_volume;
+
     raop = raop_init(10, &raop_cbs);
     if (raop == NULL) {
         LOGE("Error initializing raop!");

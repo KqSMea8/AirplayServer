@@ -42,6 +42,7 @@
 struct video_renderer_s {
     logger_t *logger;
     bool low_latency;
+    bool background;
 
     ILCLIENT_T *client;
     COMPONENT_T *video_decoder;
@@ -58,7 +59,7 @@ struct video_renderer_s {
 
 /* From: https://github.com/popcornmix/omxplayer/blob/master/omxplayer.cpp#L455
  * Licensed under the GPLv2 */
-void video_renderer_init_background(){
+void video_renderer_draw_background(){
     // we create a 1x1 black pixel image that is added to display just behind video
     DISPMANX_DISPLAY_HANDLE_T display;
     DISPMANX_UPDATE_HANDLE_T update;
@@ -109,13 +110,13 @@ void omx_event_handler(void *userdata, COMPONENT_T *comp, OMX_U32 data) {
     logger_log(renderer->logger, LOGGER_DEBUG, "Video renderer config change: %p: %d", comp, data);
 }
 
-int video_renderer_init_decoder(video_renderer_t *renderer, bool background) {
+int video_renderer_init_decoder(video_renderer_t *renderer) {
     memset(renderer->components, 0, sizeof(renderer->components));
     memset(renderer->tunnels, 0, sizeof(renderer->tunnels));
 
     bcm_host_init();
 
-    if (background) video_renderer_init_background();
+    if (renderer->background) video_renderer_draw_background();
 
     if ((renderer->client = ilclient_init()) == NULL) {
       return -3;
@@ -255,11 +256,12 @@ video_renderer_t *video_renderer_init(logger_t *logger, bool background, bool lo
 
     renderer->logger = logger;
     renderer->low_latency = low_latency;
+    renderer->background = background;
 
     renderer->first_packet_time = 0;
     renderer->input_frames = 0;
 
-    if (video_renderer_init_decoder(renderer, background) != 1) {
+    if (video_renderer_init_decoder(renderer) != 1) {
         free(renderer);
         renderer = NULL;
     }
@@ -379,6 +381,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
 
 void video_renderer_flush(video_renderer_t *renderer) {
     ilclient_flush_tunnels(renderer->tunnels, 0);
+    if (renderer->background) video_renderer_draw_background();
 }
 
 void video_renderer_destroy(video_renderer_t *renderer) {
