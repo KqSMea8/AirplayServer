@@ -134,7 +134,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
 
     bcm_host_init();
 
-    if (renderer->background) video_renderer_draw_background(renderer);
+    if (renderer->background) video_renderer_draw_background();
 
     if ((renderer->client = ilclient_init()) == NULL) {
       return -3;
@@ -279,7 +279,6 @@ video_renderer_t *video_renderer_init(logger_t *logger, bool background, bool lo
 
     renderer->first_packet_time = 0;
     renderer->input_frames = 0;
-    renderer->hidden = false;
 
     if (video_renderer_init_decoder(renderer) != 1) {
         free(renderer);
