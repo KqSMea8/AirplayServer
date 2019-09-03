@@ -107,6 +107,10 @@ Your contributions are more than welcome!
 
 # Changelog
 
+### Version 1.2
+
+* Blank screen after connection stopped
+
 ### Version 1.1
 
 * Now audio and video work on Raspberry Pi Zero. I don't know what exactly did the trick, but static compilation seems to have helped. Actually, it seems like the CPU is not the bottleneck here, as CPU usage is only about 50% while running RPiPlay. Probably micro sd card speed matters. 
