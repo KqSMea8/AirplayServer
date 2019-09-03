@@ -38,9 +38,8 @@
 */
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#define LAYER_VIDEO_VISIBLE 2
+#define LAYER_VIDEO 2
 #define LAYER_BACKGROUND 1
-#define LAYER_VIDEO_INVISIBLE 0
 
 struct video_renderer_s {
     logger_t *logger;
@@ -87,25 +86,9 @@ void video_renderer_draw_background(){
     update = vc_dispmanx_update_start(0);
 
     vc_dispmanx_element_add(update, display, LAYER_BACKGROUND, &dst_rect, resource, &src_rect,
-        DISPMANX_PROTECTION_NONE, NULL, NULL, DISPMANX_STEREOSCOPIC_MONO);
+                            DISPMANX_PROTECTION_NONE, NULL, NULL, DISPMANX_STEREOSCOPIC_MONO);
 
     vc_dispmanx_update_submit_sync(update);
-}
-
-void video_renderer_set_video_layer(video_renderer_t *renderer, int layer) {
-    OMX_CONFIG_DISPLAYREGIONTYPE display_region;
-    memset(&display_region, 0, sizeof(OMX_CONFIG_DISPLAYREGIONTYPE));
-    display_region.nSize = sizeof(OMX_CONFIG_DISPLAYREGIONTYPE);
-    display_region.nVersion.nVersion = OMX_VERSION;
-    display_region.nPortIndex = 90;
-    display_region.set = OMX_DISPLAY_SET_LAYER;
-    display_region.fullscreen = OMX_TRUE;
-    display_region.layer = layer;
-
-    if (OMX_SetConfig(ilclient_get_handle(renderer->video_renderer), OMX_IndexConfigDisplayRegion,
-                      &display_region) != OMX_ErrorNone) {
-        logger_log(renderer->logger, LOGGER_ERR, "Could not update video layer!");
-    }
 }
 
 void video_renderer_destroy_decoder(video_renderer_t *renderer) {
@@ -137,7 +120,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     if (renderer->background) video_renderer_draw_background();
 
     if ((renderer->client = ilclient_init()) == NULL) {
-      return -3;
+        return -3;
     }
 
     if (OMX_Init() != OMX_ErrorNone) {
@@ -147,7 +130,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
 
     // Create video_decode
     if (ilclient_create_component(renderer->client, &renderer->video_decoder, "video_decode",
-      ILCLIENT_DISABLE_ALL_PORTS | ILCLIENT_ENABLE_INPUT_BUFFERS) != 0) {
+                                  ILCLIENT_DISABLE_ALL_PORTS | ILCLIENT_ENABLE_INPUT_BUFFERS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
     }
@@ -155,7 +138,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
 
     // Create video_renderer
     if (ilclient_create_component(renderer->client, &renderer->video_renderer, "video_render",
-            ILCLIENT_DISABLE_ALL_PORTS) != 0) {
+                                  ILCLIENT_DISABLE_ALL_PORTS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
     }
@@ -204,14 +187,14 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     clock_state.eState = OMX_TIME_ClockStateWaitingForStartTime;
     clock_state.nWaitMask = 1;
     if (OMX_SetParameter(ilclient_get_handle(renderer->clock), OMX_IndexConfigTimeClockState,
-            &clock_state) != OMX_ErrorNone) {
+                         &clock_state) != OMX_ErrorNone) {
         video_renderer_destroy_decoder(renderer);
         return -13;
     }
 
     // Create video_scheduler
     if (ilclient_create_component(renderer->client, &renderer->video_scheduler, "video_scheduler",
-            ILCLIENT_DISABLE_ALL_PORTS) != 0) {
+                                  ILCLIENT_DISABLE_ALL_PORTS) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -14;
     }
@@ -230,10 +213,10 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     display_region.nPortIndex = 90;
     display_region.set = OMX_DISPLAY_SET_FULLSCREEN | OMX_DISPLAY_SET_LAYER;
     display_region.fullscreen = OMX_TRUE;
-    display_region.layer = LAYER_VIDEO_VISIBLE;
+    display_region.layer = LAYER_VIDEO;
 
     if (OMX_SetConfig(ilclient_get_handle(renderer->video_renderer), OMX_IndexConfigDisplayRegion,
-            &display_region) != OMX_ErrorNone) {
+                      &display_region) != OMX_ErrorNone) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Could not set renderer to fullscreen");
         video_renderer_destroy_decoder(renderer);
         return -13;
@@ -255,8 +238,8 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     format.eCompressionFormat = OMX_VIDEO_CodingAVC;
 
     if (OMX_SetParameter(ilclient_get_handle(renderer->video_decoder), OMX_IndexParamVideoPortFormat,
-            &format) != OMX_ErrorNone ||
-            ilclient_enable_port_buffers(renderer->video_decoder, 130, NULL, NULL, NULL) != 0) {
+                         &format) != OMX_ErrorNone ||
+        ilclient_enable_port_buffers(renderer->video_decoder, 130, NULL, NULL, NULL) != 0) {
         video_renderer_destroy_decoder(renderer);
         return -15;
     }
@@ -361,7 +344,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
     int offset = 0;
     while (offset < data_len) {
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
-        if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!", data_len);
+        if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!");
 
         int chunk_size = MIN(data_len - offset, buffer->nAllocLen);
         memcpy(buffer->pBuffer, data + offset, chunk_size);
@@ -376,7 +359,6 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
             buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
             renderer->first_packet_time = raop_ntp_get_local_time(ntp);
             if (!renderer->low_latency) buffer->nTimeStamp = ilclient_ticks_from_s64(renderer->first_packet_time);
-            video_renderer_set_video_layer(renderer, LAYER_VIDEO_VISIBLE);
         }
 
         // Mark the last buffer if we had to split the data (probably not necessary)
@@ -400,9 +382,20 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
 }
 
 void video_renderer_flush(video_renderer_t *renderer) {
+    OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
+    if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer while flushing!");
+
+    buffer->nFilledLen = 0;
+    buffer->nFlags = OMX_BUFFERFLAG_TIME_UNKNOWN | OMX_BUFFERFLAG_EOS;
+    if (OMX_EmptyThisBuffer(ilclient_get_handle(renderer->video_decoder), buffer) != OMX_ErrorNone) {
+        logger_log(renderer->logger, LOGGER_ERR, "Video decoder refused processing buffer while flushing!");
+    }
+
+    // Wait until EOS reaches renderer
+    ilclient_wait_for_event(renderer->video_renderer, OMX_EventBufferFlag, 90, 0, OMX_BUFFERFLAG_EOS, 0,
+                            ILCLIENT_BUFFER_FLAG_EOS, -1);
     ilclient_flush_tunnels(renderer->tunnels, 0);
 
-    video_renderer_set_video_layer(renderer, LAYER_VIDEO_INVISIBLE);
     renderer->first_packet_time = 0;
 }
 
