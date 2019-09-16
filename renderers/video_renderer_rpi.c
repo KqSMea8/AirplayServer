@@ -290,11 +290,13 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
     logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", data_len);
     renderer->input_frames++;
 
+    uint8_t *modified_data = NULL;
+
     if (type == 0) {
         // This reduces the Raspberry Pi H264 decode pipeline delay from about 11 to 6 frames for RPiPlay.
         // Described at https://www.raspberrypi.org/forums/viewtopic.php?t=41053
         logger_log(renderer->logger, LOGGER_DEBUG, "Injecting max_dec_frame_buffering");
-        uint8_t *modified_data = malloc(data_len * 2);
+        modified_data = malloc(data_len * 2);
         int sps_start, sps_end;
         h264_stream_t* h = h264_new();
         int sps_size = find_nal_unit(data, data_len, &sps_start, &sps_end);
@@ -319,6 +321,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
         } else {
             logger_log(renderer->logger, LOGGER_ERR, "Could not find sps boundaries");
             free(modified_data);
+            modified_data = NULL;
         }
     }
 
@@ -374,10 +377,10 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
         logger_log(renderer->logger, LOGGER_DEBUG, "Video delay is %lld", video_delay);
     }
 
-    if (type == 0) {
+    if (modified_data) {
         // We overwrote the data buffer to inject the max_dec_frame_buffering before,
         // so we need to free the data buffer here
-        free(data);
+        free(modified_data);
     }
 }
 
