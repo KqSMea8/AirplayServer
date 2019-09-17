@@ -12,7 +12,7 @@ Both audio and video work fine on a Raspberry Pi 3B+ and a Raspberry Pi Zero, th
 
 For best performance:
 * Use a wired network connection
-* Compile with -O3 (cmake --DCMAKE_CXX_FLAGS="-O3" --DCMAKE_C_FLAGS="-O3")
+* Compile with -O3 (cmake --DCMAKE_CXX_FLAGS="-O3" --DCMAKE_C_FLAGS="-O3" ..)
 * Make sure the DUMP flags are *not* active
 * Make sure you *don't* use the -d debug log flag
 * Make sure no other demanding tasks are running (this is particularly important for audio on the Pi Zero)
