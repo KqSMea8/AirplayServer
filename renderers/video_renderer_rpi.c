@@ -404,7 +404,8 @@ void video_renderer_flush(video_renderer_t *renderer) {
 
 void video_renderer_destroy(video_renderer_t *renderer) {
     if (renderer) {
-        video_renderer_flush(renderer);
+        // Only flush if data was sent through, gets stuck otherwise
+        if (renderer->first_packet_time) video_renderer_flush(renderer);
         video_renderer_destroy_decoder(renderer);
         free(renderer);
     }
