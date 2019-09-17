@@ -12,9 +12,10 @@ Both audio and video work fine on a Raspberry Pi 3B+ and a Raspberry Pi Zero, th
 
 For best performance:
 * Use a wired network connection
+* Compile with -O3 (cmake --DCMAKE_CXX_FLAGS="-O3" --DCMAKE_C_FLAGS="-O3")
 * Make sure the DUMP flags are *not* active
 * Make sure you *don't* use the -d debug log flag
-* Use a fast micro sd card
+* Make sure no other demanding tasks are running (this is particularly important for audio on the Pi Zero)
 
 By using OpenSSL for AES decryption, I was able to speed up the decryption of video packets from up to 0.2 seconds to up to 0.007 seconds for large packets (On the Pi Zero). Average is now more like 0.002 seconds.
 
@@ -82,7 +83,7 @@ Given the large number of third-party AirPlay receivers (mostly closed-source) a
 
 The code in this repository accumulated from various sources over time. Here is my attempt at listing the various authors and the components they created:
 
-* **dsafa22**: Created an [AirPlay 2 mirroring server](https://github.com/dsafa22/AirplayServer) for Android based on ShairPlay. This project is basically a port of dsafa22's code to the Raspberry Pi, utilizing OpenMAX and OpenSSL for better performance on the Pi. All code in `lib/` concerning mirroring is dsafa22's work. License: GNU LGPLv2.1+
+* **dsafa22**: Created an [AirPlay 2 mirroring server](https://github.com/dsafa22/AirplayServer)(seems gone now) for Android based on ShairPlay. This project is basically a port of dsafa22's code to the Raspberry Pi, utilizing OpenMAX and OpenSSL for better performance on the Pi. All code in `lib/` concerning mirroring is dsafa22's work. License: GNU LGPLv2.1+
 * **Juho Vähä-Herttua** and contributors: Created an AirPlay audio server called [ShairPlay](https://github.com/juhovh/shairplay), including support for Fairplay based on PlayFair. Most of the code in `lib/` originally stems from this project. License: GNU LGPLv2.1+
 * **EstebanKubata**: Created a FairPlay library called [PlayFair](https://github.com/EstebanKubata/playfair). Located in the `lib/playfair` folder. License: GNU GPL
 * **Jonathan Beck, Nikias Bassen** and contributors: Created a library for plist handling called [libplist](https://github.com/libimobiledevice/libplist). Located in the `lib/plist` folder. License: GNU LGPLv2.1+
@@ -113,7 +114,7 @@ Your contributions are more than welcome!
 
 ### Version 1.1
 
-* Now audio and video work on Raspberry Pi Zero. I don't know what exactly did the trick, but static compilation seems to have helped. Actually, it seems like the CPU is not the bottleneck here, as CPU usage is only about 50% while running RPiPlay. Probably micro sd card speed matters. 
+* Now audio and video work on Raspberry Pi Zero. I don't know what exactly did the trick, but static compilation seems to have helped.
 * Smoother video due to clock syncing
 * Correct lip-sync due to clock syncing
 * Lower latency due to injecting max_dec_frame_buffering into SPS NAL 
