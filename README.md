@@ -52,6 +52,8 @@ cmake ..
 make
 ```
 
+GCC 5 or later is required.
+
 # Usage
 
 Start the rpiplay executable and an AirPlay mirror target device will appear in the network.
