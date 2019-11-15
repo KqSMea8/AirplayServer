@@ -339,8 +339,12 @@ void audio_renderer_set_volume(audio_renderer_t *renderer, float volume) {
     audio_volume.nSize = sizeof(OMX_AUDIO_CONFIG_VOLUMETYPE);
     audio_volume.nVersion.nVersion = OMX_VERSION;
 
+    audio_volume.bLinear = OMX_FALSE;
     audio_volume.nPortIndex = 100;
-    audio_volume.sVolume.nValue = volume * 50.0;
+    // Factor 100 for dB -> mB (millibel)
+    // It's not clear where the additional factor of 2 comes from,
+    // but without it, volume is too high.
+    audio_volume.sVolume.nValue = volume * 200.0;
 
     if (OMX_SetConfig(ilclient_get_handle(renderer->audio_renderer), OMX_IndexConfigAudioVolume,
             &audio_volume) != OMX_ErrorNone) {
