@@ -331,6 +331,8 @@ void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, u
             logger_log(renderer->logger, LOGGER_ERR, "Audio renderer refused processing buffer");
         }
     }
+
+    free(p_time_data);
 }
 
 void audio_renderer_set_volume(audio_renderer_t *renderer, float volume) {
