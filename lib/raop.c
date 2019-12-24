@@ -67,8 +67,7 @@ typedef struct raop_conn_s raop_conn_t;
 #include "raop_handlers.h"
 
 static void *
-conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remote, int remotelen)
-{
+conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remote, int remotelen) {
     raop_t *raop = opaque;
     raop_conn_t *conn;
 
@@ -126,12 +125,15 @@ conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remot
     conn->locallen = locallen;
     conn->remotelen = remotelen;
 
+    if (raop->callbacks.conn_init) {
+        raop->callbacks.conn_init(raop->callbacks.cls);
+    }
+
     return conn;
 }
 
 static void
-conn_request(void *ptr, http_request_t *request, http_response_t **response)
-{
+conn_request(void *ptr, http_request_t *request, http_response_t **response) {
     raop_conn_t *conn = ptr;
     logger_log(conn->raop->logger, LOGGER_DEBUG, "conn_request");
     const char *method;
@@ -184,7 +186,7 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response)
         if (rtpinfo) {
             logger_log(conn->raop->logger, LOGGER_DEBUG, "Flush with RTP-Info: %s", rtpinfo);
             if (!strncmp(rtpinfo, "seq=", 4)) {
-                next_seq = strtol(rtpinfo+4, NULL, 10);
+                next_seq = strtol(rtpinfo + 4, NULL, 10);
             }
         }
         if (conn->raop_rtp) {
@@ -217,11 +219,14 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response)
 }
 
 static void
-conn_destroy(void *ptr)
-{
+conn_destroy(void *ptr) {
     raop_conn_t *conn = ptr;
 
     logger_log(conn->raop->logger, LOGGER_INFO, "Destroying connection");
+
+    if (conn->raop->callbacks.conn_destroy) {
+        conn->raop->callbacks.conn_destroy(conn->raop->callbacks.cls);
+    }
 
     if (conn->raop_ntp) {
         raop_ntp_destroy(conn->raop_ntp);
@@ -245,8 +250,7 @@ conn_destroy(void *ptr)
 }
 
 raop_t *
-raop_init(int max_clients, raop_callbacks_t *callbacks)
-{
+raop_init(int max_clients, raop_callbacks_t *callbacks) {
     raop_t *raop;
     pairing_t *pairing;
     httpd_t *httpd;
@@ -303,8 +307,7 @@ raop_init(int max_clients, raop_callbacks_t *callbacks)
 }
 
 void
-raop_destroy(raop_t *raop)
-{
+raop_destroy(raop_t *raop) {
     if (raop) {
         raop_stop(raop);
         pairing_destroy(raop->pairing);
@@ -318,69 +321,60 @@ raop_destroy(raop_t *raop)
 }
 
 int
-raop_is_running(raop_t *raop)
-{
+raop_is_running(raop_t *raop) {
     assert(raop);
 
     return httpd_is_running(raop->httpd);
 }
 
 void
-raop_set_log_level(raop_t *raop, int level)
-{
+raop_set_log_level(raop_t *raop, int level) {
     assert(raop);
 
     logger_set_level(raop->logger, level);
 }
 
 void
-raop_set_port(raop_t *raop, unsigned short port)
-{
+raop_set_port(raop_t *raop, unsigned short port) {
     assert(raop);
     raop->port = port;
 }
 
 unsigned short
-raop_get_port(raop_t *raop)
-{
+raop_get_port(raop_t *raop) {
     assert(raop);
     return raop->port;
 }
 
 void *
-raop_get_callback_cls(raop_t *raop)
-{
+raop_get_callback_cls(raop_t *raop) {
     assert(raop);
     return raop->callbacks.cls;
 }
 
 void
-raop_set_log_callback(raop_t *raop, raop_log_callback_t callback, void *cls)
-{
+raop_set_log_callback(raop_t *raop, raop_log_callback_t callback, void *cls) {
     assert(raop);
 
     logger_set_callback(raop->logger, callback, cls);
 }
 
 void
-raop_set_dnssd(raop_t *raop, dnssd_t *dnssd)
-{
+raop_set_dnssd(raop_t *raop, dnssd_t *dnssd) {
     assert(dnssd);
     raop->dnssd = dnssd;
 }
 
 
 int
-raop_start(raop_t *raop, unsigned short *port)
-{
+raop_start(raop_t *raop, unsigned short *port) {
     assert(raop);
     assert(port);
     return httpd_start(raop->httpd, port);
 }
 
 void
-raop_stop(raop_t *raop)
-{
+raop_stop(raop_t *raop) {
     assert(raop);
     httpd_stop(raop->httpd);
 }

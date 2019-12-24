@@ -36,14 +36,15 @@
 #define VERSION "1.2"
 
 #define DEFAULT_NAME "RPiPlay"
-#define DEFAULT_SHOW_BACKGROUND true
+#define DEFAULT_BACKGROUND 2
 #define DEFAULT_AUDIO_DEVICE AUDIO_DEVICE_HDMI
 #define DEFAULT_LOW_LATENCY false
 #define DEFAULT_DEBUG_LOG false
 #define DEFAULT_HW_ADDRESS { (char) 0x48, (char) 0x5d, (char) 0x60, (char) 0x7c, (char) 0xee, (char) 0x22 }
 
-int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device,
+int start_server(std::vector<char> hw_addr, std::string name, int background_mode, audio_device_t audio_device,
                  bool low_latency, bool debug_log);
+
 int stop_server();
 
 static bool running = false;
@@ -72,7 +73,7 @@ static void init_signals(void) {
 }
 
 static int parse_hw_addr(std::string str, std::vector<char> &hw_addr) {
-    for (int i = 0; i < str.length(); i+=3) {
+    for (int i = 0; i < str.length(); i += 3) {
         hw_addr.push_back((char) stol(str.substr(i), NULL, 16));
     }
     return 0;
@@ -91,12 +92,12 @@ std::string find_mac() {
     return mac_address;
 }
 
-void print_info(char* name) {
+void print_info(char *name) {
     printf("RPiPlay %s: An open-source AirPlay mirroring server for Raspberry Pi\n", VERSION);
-    printf("Usage: %s [-b] [-n name] [-a (hdmi|analog|off)]\n", name);
+    printf("Usage: %s [-b (hide|auto|always)] [-n name] [-a (hdmi|analog|off)]\n", name);
     printf("Options:\n");
     printf("-n name               Specify the network name of the AirPlay server\n");
-    printf("-b                    Hide the black background behind the video\n");
+    printf("-b (hide|auto|always) Hide the black background behind the video\n");
     printf("-a (hdmi|analog|off)  Set audio output device\n");
     printf("-l                    Enable low-latency mode (disables render clock)\n");
     printf("-d                    Enable debug logging\n");
@@ -106,7 +107,13 @@ void print_info(char* name) {
 int main(int argc, char *argv[]) {
     init_signals();
 
-    bool show_background = DEFAULT_SHOW_BACKGROUND;
+    /*
+     * background mode:
+     *   0: no background
+     *   1: draw background only while there's an active connection
+     *   2: always draw background
+     */
+    int background = DEFAULT_BACKGROUND;
     std::string server_name = DEFAULT_NAME;
     std::vector<char> server_hw_addr = DEFAULT_HW_ADDRESS;
     audio_device_t audio_device = DEFAULT_AUDIO_DEVICE;
@@ -120,7 +127,11 @@ int main(int argc, char *argv[]) {
             if (i == argc - 1) continue;
             server_name = std::string(argv[++i]);
         } else if (arg == "-b") {
-            show_background = !show_background;
+            if (i == argc - 1) continue;
+            std::string background_mode(argv[++i]);
+            background = background_mode == "hide" ? 0 :
+                         background_mode == "auto" ? 1 :
+                         2;
         } else if (arg == "-a") {
             if (i == argc - 1) continue;
             std::string audio_device_name(argv[++i]);
@@ -143,7 +154,7 @@ int main(int argc, char *argv[]) {
         parse_hw_addr(mac_address, server_hw_addr);
     }
 
-    if (start_server(server_hw_addr, server_name, show_background, audio_device, low_latency, debug_log) != 0) {
+    if (start_server(server_hw_addr, server_name, background, audio_device, low_latency, debug_log) != 0) {
         return 1;
     }
 
@@ -157,6 +168,14 @@ int main(int argc, char *argv[]) {
 }
 
 // Server callbacks
+extern "C" void conn_init(void *cls) {
+    video_renderer_update_background(video_renderer, 1);
+}
+
+extern "C" void conn_destroy(void *cls) {
+    video_renderer_update_background(video_renderer, -1);
+}
+
 extern "C" void audio_process(void *cls, raop_ntp_t *ntp, aac_decode_struct *data) {
     if (audio_renderer != NULL) {
         audio_renderer_render_buffer(audio_renderer, ntp, data->data, data->data_len, data->pts);
@@ -181,7 +200,6 @@ extern "C" void audio_set_volume(void *cls, float volume) {
     }
 }
 
-
 extern "C" void log_callback(void *cls, int level, const char *msg) {
     switch (level) {
         case LOGGER_DEBUG: {
@@ -200,15 +218,18 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
             LOGE("%s", msg);
             break;
         }
-        default:break;
+        default:
+            break;
     }
 
 }
 
-int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device,
+int start_server(std::vector<char> hw_addr, std::string name, int background, audio_device_t audio_device,
                  bool low_latency, bool debug_log) {
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
+    raop_cbs.conn_init = conn_init;
+    raop_cbs.conn_destroy = conn_destroy;
     raop_cbs.audio_process = audio_process;
     raop_cbs.video_process = video_process;
     raop_cbs.audio_flush = audio_flush;
@@ -230,14 +251,15 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
 
     if (low_latency) logger_log(render_logger, LOGGER_INFO, "Using low-latency mode");
 
-    if ((video_renderer = video_renderer_init(render_logger, show_background, low_latency)) == NULL) {
+    if ((video_renderer = video_renderer_init(render_logger, background, low_latency)) == NULL) {
         LOGE("Could not init video renderer");
         return -1;
     }
 
     if (audio_device == AUDIO_DEVICE_NONE) {
         LOGI("Audio disabled");
-    } else if ((audio_renderer = audio_renderer_init(render_logger, video_renderer, audio_device, low_latency)) == NULL) {
+    } else if ((audio_renderer = audio_renderer_init(render_logger, video_renderer, audio_device, low_latency)) ==
+               NULL) {
         LOGE("Could not init audio renderer");
         return -1;
     }

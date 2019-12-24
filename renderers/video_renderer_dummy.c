@@ -30,7 +30,7 @@ struct video_renderer_s {
     logger_t *logger;
 };
 
-video_renderer_t *video_renderer_init(logger_t *logger, bool background, bool low_latency) {
+video_renderer_t *video_renderer_init(logger_t *logger, int background, bool low_latency) {
     video_renderer_t *renderer;
     renderer = calloc(1, sizeof(video_renderer_t));
     if (!renderer) {
@@ -53,4 +53,8 @@ void video_renderer_destroy(video_renderer_t *renderer) {
     if (renderer) {
         free(renderer);
     }
+}
+
+void video_renderer_update_background(video_renderer_t *renderer, int type) {
+
 }

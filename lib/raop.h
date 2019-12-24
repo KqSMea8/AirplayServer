@@ -32,19 +32,21 @@ typedef struct raop_s raop_t;
 typedef void (*raop_log_callback_t)(void *cls, int level, const char *msg);
 
 struct raop_callbacks_s {
-	void* cls;
+    void* cls;
 
-	void  (*audio_process)(void *cls, raop_ntp_t *ntp, aac_decode_struct *data);
+    void  (*audio_process)(void *cls, raop_ntp_t *ntp, aac_decode_struct *data);
     void  (*video_process)(void *cls, raop_ntp_t *ntp, h264_decode_struct *data);
 
-	/* Optional but recommended callback functions */
-	void  (*audio_flush)(void *cls);
+    /* Optional but recommended callback functions */
+    void  (*conn_init)(void *cls);
+    void  (*conn_destroy)(void *cls);
+    void  (*audio_flush)(void *cls);
     void  (*video_flush)(void *cls);
     void  (*audio_set_volume)(void *cls, float volume);
-	void  (*audio_set_metadata)(void *cls, const void *buffer, int buflen);
-	void  (*audio_set_coverart)(void *cls, const void *buffer, int buflen);
-	void  (*audio_remote_control_id)(void *cls, const char *dacp_id, const char *active_remote_header);
-	void  (*audio_set_progress)(void *cls, unsigned int start, unsigned int curr, unsigned int end);
+    void  (*audio_set_metadata)(void *cls, const void *buffer, int buflen);
+    void  (*audio_set_coverart)(void *cls, const void *buffer, int buflen);
+    void  (*audio_remote_control_id)(void *cls, const char *dacp_id, const char *active_remote_header);
+    void  (*audio_set_progress)(void *cls, unsigned int start, unsigned int curr, unsigned int end);
 };
 typedef struct raop_callbacks_s raop_callbacks_t;
 

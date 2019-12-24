@@ -31,9 +31,9 @@
 #include "../lib/threads.h"
 #include "h264-bitstream/h264_stream.h"
 
-/* 
+/*
  * H264 renderer using OpenMAX for hardware accelerated decoding
- * on the Raspberry Pi. 
+ * on the Raspberry Pi.
  * Based on the hello_video sample from the Raspberry Pi project.
 */
 
@@ -44,7 +44,10 @@
 struct video_renderer_s {
     logger_t *logger;
     bool low_latency;
-    bool background;
+    int background;
+
+    uint16_t background_visits;
+    DISPMANX_ELEMENT_HANDLE_T background_element;
 
     ILCLIENT_T *client;
     COMPONENT_T *video_decoder;
@@ -59,9 +62,14 @@ struct video_renderer_s {
     uint64_t input_frames;
 };
 
+
 /* From: https://github.com/popcornmix/omxplayer/blob/master/omxplayer.cpp#L455
  * Licensed under the GPLv2 */
-void video_renderer_draw_background(){
+void video_renderer_render_background(video_renderer_t *renderer) {
+    if (renderer->background_element) {
+        return;
+    }
+
     // we create a 1x1 black pixel image that is added to display just behind video
     DISPMANX_DISPLAY_HANDLE_T display;
     DISPMANX_UPDATE_HANDLE_T update;
@@ -80,15 +88,55 @@ void video_renderer_draw_background(){
 
     vc_dispmanx_resource_write_data(resource, type, sizeof(image), &image, &dst_rect);
 
-    vc_dispmanx_rect_set(&src_rect, 0, 0, 1<<16, 1<<16);
+    vc_dispmanx_rect_set(&src_rect, 0, 0, 1 << 16, 1 << 16);
     vc_dispmanx_rect_set(&dst_rect, 0, 0, 0, 0);
 
     update = vc_dispmanx_update_start(0);
 
-    vc_dispmanx_element_add(update, display, LAYER_BACKGROUND, &dst_rect, resource, &src_rect,
-                            DISPMANX_PROTECTION_NONE, NULL, NULL, DISPMANX_STEREOSCOPIC_MONO);
+    renderer->background_element = vc_dispmanx_element_add(update, display, LAYER_BACKGROUND, &dst_rect, resource,
+                                                           &src_rect,
+                                                           DISPMANX_PROTECTION_NONE, NULL, NULL,
+                                                           DISPMANX_STEREOSCOPIC_MONO);
 
     vc_dispmanx_update_submit_sync(update);
+}
+
+void video_renderer_remove_background(video_renderer_t *renderer) {
+    if (renderer->background_element) {
+        DISPMANX_UPDATE_HANDLE_T update = vc_dispmanx_update_start(0);
+        vc_dispmanx_element_remove(update, renderer->background_element);
+        vc_dispmanx_update_submit_sync(update);
+    }
+    renderer->background_element = 0;
+}
+
+void video_renderer_update_background(video_renderer_t *renderer, int type) {
+    if (type < 0) {
+        renderer->background_visits--;
+    } else if (type > 0) {
+        renderer->background_visits++;
+    }
+    if (renderer->background_visits < 0) {
+        renderer->background_visits = 0;
+    }
+
+    if (renderer->background == 0) { // no background
+        return;
+    }
+
+    if (renderer->background == 2) { // always draw background
+        video_renderer_render_background(renderer);
+        return;
+    }
+
+    if (renderer->background == 1) {
+        // show background when connection come and hide background when all connections go away
+        if (renderer->background_visits > 0) {
+            video_renderer_render_background(renderer);
+        } else {
+            video_renderer_remove_background(renderer);
+        }
+    }
 }
 
 void video_renderer_destroy_decoder(video_renderer_t *renderer) {
@@ -107,7 +155,7 @@ void video_renderer_destroy_decoder(video_renderer_t *renderer) {
 }
 
 void omx_event_handler(void *userdata, COMPONENT_T *comp, OMX_U32 data) {
-    video_renderer_t *renderer = (video_renderer_t*) userdata;
+    video_renderer_t *renderer = (video_renderer_t *) userdata;
     logger_log(renderer->logger, LOGGER_DEBUG, "Video renderer config change: %p: %d", comp, data);
 }
 
@@ -117,7 +165,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
 
     bcm_host_init();
 
-    if (renderer->background) video_renderer_draw_background();
+    video_renderer_update_background(renderer, 0);
 
     if ((renderer->client = ilclient_init()) == NULL) {
         return -3;
@@ -249,7 +297,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     return 1;
 }
 
-video_renderer_t *video_renderer_init(logger_t *logger, bool background, bool low_latency) {
+video_renderer_t *video_renderer_init(logger_t *logger, int background, bool low_latency) {
     video_renderer_t *renderer;
     renderer = calloc(1, sizeof(video_renderer_t));
     if (!renderer) {
@@ -284,7 +332,8 @@ void video_renderer_start(video_renderer_t *renderer) {
     ilclient_change_component_state(renderer->video_decoder, OMX_StateExecuting);
 }
 
-void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int data_len, uint64_t pts, int type) {
+void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, unsigned char *data, int data_len,
+                                  uint64_t pts, int type) {
     if (data_len == 0) return;
 
     logger_log(renderer->logger, LOGGER_DEBUG, "Got h264 data of %d bytes", data_len);
@@ -298,7 +347,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
         logger_log(renderer->logger, LOGGER_DEBUG, "Injecting max_dec_frame_buffering");
         modified_data = malloc(data_len * 2);
         int sps_start, sps_end;
-        h264_stream_t* h = h264_new();
+        h264_stream_t *h = h264_new();
         int sps_size = find_nal_unit(data, data_len, &sps_start, &sps_end);
         int pps_size = data_len - 8 - sps_size;
         if (sps_size > 0) {
@@ -329,7 +378,8 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
         logger_log(renderer->logger, LOGGER_DEBUG, "Port settings changed!!");
 
         uint64_t time_diff = raop_ntp_get_local_time(ntp) - renderer->first_packet_time;
-        logger_log(renderer->logger, LOGGER_DEBUG, "Video pipeline delay is %llu frames or %llu us", renderer->input_frames, time_diff);
+        logger_log(renderer->logger, LOGGER_DEBUG, "Video pipeline delay is %llu frames or %llu us",
+                   renderer->input_frames, time_diff);
 
         if (ilclient_setup_tunnel(&renderer->tunnels[0], 0, 0) != 0) {
             logger_log(renderer->logger, LOGGER_ERR, "Could not setup decoder tunnel");
