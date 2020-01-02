@@ -150,20 +150,20 @@ raop_rtp_mirror_thread(void *arg)
 {
     raop_rtp_mirror_t *raop_rtp_mirror = arg;
     assert(raop_rtp_mirror);
-	
+
     int stream_fd = -1;
     unsigned char packet[128];
     memset(packet, 0 , 128);
     unsigned char* payload = NULL;
     unsigned int readstart = 0;
 
-    #ifdef DUMP_H264
+#ifdef DUMP_H264
     // C decrypted
     FILE* file = fopen("/home/pi/Airplay.h264", "wb");
     // Encrypted source file
     FILE* file_source = fopen("/home/pi/Airplay.source", "wb");
     FILE* file_len = fopen("/home/pi/Airplay.len", "wb");
-    #endif
+#endif
 
     while (1) {
         fd_set rfds;
@@ -247,17 +247,17 @@ raop_rtp_mirror_thread(void *arg)
             unsigned short payload_option = byteutils_get_short(packet, 6);
 
             if (payload == NULL) {
-	            payload = malloc(payload_size);
+                payload = malloc(payload_size);
                 readstart = 0;
-	        }
-			
+            }
+
             while (readstart < payload_size) {
                 // Payload data
                 ret = recv(stream_fd, payload + readstart, payload_size - readstart, 0);
                 if (ret <= 0) break;
                 readstart = readstart + ret;
             }
-            
+
             if (ret == 0) {
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror tcp socket closed");
                 break;
@@ -282,10 +282,10 @@ raop_rtp_mirror_thread(void *arg)
                 logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror video ntp = %llu, now = %llu, latency = %lld",
                            ntp_timestamp, ntp_now, ((int64_t) ntp_now) - ((int64_t) ntp_timestamp));
 
-                #ifdef DUMP_H264
+#ifdef DUMP_H264
                 fwrite(payload, payload_size, 1, file_source);
                 fwrite(&readstart, sizeof(readstart), 1, file_len);
-                #endif
+#endif
 
                 // Decrypt data
                 unsigned char* payload_decrypted = malloc(payload_size);
@@ -314,9 +314,9 @@ raop_rtp_mirror_thread(void *arg)
                 // logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "nalu_size = %d, payloadsize = %d nalus_count = %d",
                 //        nalu_size, payload_size, nalus_count);
 
-                #ifdef DUMP_H264
+#ifdef DUMP_H264
                 fwrite(payload_decrypted, payload_size, 1, file);
-                #endif
+#endif
 
                 h264_decode_struct h264_data;
                 h264_data.data_len = payload_size;
@@ -370,9 +370,9 @@ raop_rtp_mirror_thread(void *arg)
                     sps_pps[h264.sps_size + 7] = 1;
                     memcpy(sps_pps + h264.sps_size + 8, h264.picture_parameter_set, h264.pps_size);
 
-                    #ifdef DUMP_H264
+#ifdef DUMP_H264
                     fwrite(sps_pps, sps_pps_len, 1, file);
-                    #endif
+#endif
 
                     h264_decode_struct h264_data;
                     h264_data.data_len = sps_pps_len;
@@ -397,11 +397,11 @@ raop_rtp_mirror_thread(void *arg)
         closesocket(stream_fd);
     }
 
-    #ifdef DUMP_H264
-    fclose(file);
+#ifdef DUMP_H264
+        fclose(file);
     fclose(file_source);
     fclose(file_len);
-    #endif
+#endif
 
     // Ensure running reflects the actual state
     MUTEX_LOCK(raop_rtp_mirror->run_mutex);

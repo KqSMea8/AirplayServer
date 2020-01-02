@@ -39,8 +39,8 @@
 typedef struct raop_ntp_data_s {
     uint64_t time; // The local wall clock time at time of ntp packet arrival
     uint64_t dispersion;
-    int64_t  delay; // The round trip delay
-    int64_t  offset; // The difference between remote and local wall clock time
+    int64_t delay; // The round trip delay
+    int64_t offset; // The difference between remote and local wall clock time
 } raop_ntp_data_t;
 
 struct raop_ntp_s {
@@ -52,8 +52,8 @@ struct raop_ntp_s {
     mutex_handle_t wait_mutex;
     cond_handle_t wait_cond;
 
-    raop_ntp_data_t     data[RAOP_NTP_DATA_COUNT];
-    int                 data_index;
+    raop_ntp_data_t data[RAOP_NTP_DATA_COUNT];
+    int data_index;
 
     // The clock sync params are periodically updated to the AirPlay client's NTP clock
     mutex_handle_t sync_params_mutex;

@@ -88,7 +88,7 @@ int audio_renderer_init_decoder(audio_renderer_t *renderer) {
 
     logger_log(renderer->logger, LOGGER_DEBUG, "> stream info: channel = %d\tsample_rate = %d\tframe_size = %d\taot = %d\tbitrate = %d",   \
             aac_stream_info->channelConfig, aac_stream_info->aacSampleRate,
-           aac_stream_info->aacSamplesPerFrame, aac_stream_info->aot, aac_stream_info->bitRate);
+            aac_stream_info->aacSamplesPerFrame, aac_stream_info->aot, aac_stream_info->bitRate);
     return 1;
 }
 
@@ -125,7 +125,7 @@ int audio_renderer_init_renderer(audio_renderer_t *renderer, video_renderer_t *v
 
     // Create audio_renderer
     if (ilclient_create_component(renderer->client, &renderer->audio_renderer, "audio_render",
-            ILCLIENT_DISABLE_ALL_PORTS | ILCLIENT_ENABLE_INPUT_BUFFERS) != 0) {
+                                  ILCLIENT_DISABLE_ALL_PORTS | ILCLIENT_ENABLE_INPUT_BUFFERS) != 0) {
         audio_renderer_destroy_renderer(renderer);
         return -14;
     }
@@ -163,7 +163,7 @@ int audio_renderer_init_renderer(audio_renderer_t *renderer, video_renderer_t *v
         clock_state.eState = OMX_TIME_ClockStateWaitingForStartTime;
         clock_state.nWaitMask = 1;
         if (OMX_SetParameter(ilclient_get_handle(renderer->clock), OMX_IndexConfigTimeClockState,
-                &clock_state) != OMX_ErrorNone) {
+                             &clock_state) != OMX_ErrorNone) {
             audio_renderer_destroy_decoder(renderer);
             return -13;
         }
@@ -187,7 +187,7 @@ int audio_renderer_init_renderer(audio_renderer_t *renderer, video_renderer_t *v
     port_format.nPortIndex = 100;
     port_format.eEncoding = OMX_AUDIO_CodingPCM;
     if (OMX_SetParameter(ilclient_get_handle(renderer->audio_renderer), OMX_IndexParamAudioPortFormat,
-            &port_format) != OMX_ErrorNone) {
+                         &port_format) != OMX_ErrorNone) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Could not set pcm format");
         audio_renderer_destroy_renderer(renderer);
         return -13;
@@ -208,7 +208,7 @@ int audio_renderer_init_renderer(audio_renderer_t *renderer, video_renderer_t *v
     pcm_mode.ePCMMode = OMX_AUDIO_PCMModeLinear;
 
     if (OMX_SetConfig(ilclient_get_handle(renderer->audio_renderer), OMX_IndexParamAudioPcm,
-            &pcm_mode) != OMX_ErrorNone) {
+                      &pcm_mode) != OMX_ErrorNone) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Could not set pcm config");
         audio_renderer_destroy_renderer(renderer);
         return -13;
@@ -223,7 +223,7 @@ int audio_renderer_init_renderer(audio_renderer_t *renderer, video_renderer_t *v
     strcpy((char *)audio_destination.sName, device_name);
 
     if (OMX_SetConfig(ilclient_get_handle(renderer->audio_renderer), OMX_IndexConfigBrcmAudioDestination,
-            &audio_destination) != OMX_ErrorNone) {
+                      &audio_destination) != OMX_ErrorNone) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Could not set audio device");
         audio_renderer_destroy_renderer(renderer);
         return -14;
@@ -349,7 +349,7 @@ void audio_renderer_set_volume(audio_renderer_t *renderer, float volume) {
     audio_volume.sVolume.nValue = volume * 200.0;
 
     if (OMX_SetConfig(ilclient_get_handle(renderer->audio_renderer), OMX_IndexConfigAudioVolume,
-            &audio_volume) != OMX_ErrorNone) {
+                      &audio_volume) != OMX_ErrorNone) {
         logger_log(renderer->logger, LOGGER_DEBUG, "Could not set audio volume");
     }
 }

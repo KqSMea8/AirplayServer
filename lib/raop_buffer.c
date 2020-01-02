@@ -59,9 +59,9 @@ struct raop_buffer_s {
 
 void
 raop_buffer_init_key_iv(raop_buffer_t *raop_buffer,
-                     const unsigned char *aeskey,
-                     const unsigned char *aesiv,
-                     const unsigned char *ecdh_secret)
+                        const unsigned char *aeskey,
+                        const unsigned char *aesiv,
+                        const unsigned char *ecdh_secret)
 {
 
     // Initialization key
@@ -73,17 +73,17 @@ raop_buffer_init_key_iv(raop_buffer_t *raop_buffer,
     sha_update(ctx, ecdh_secret, 32);
     sha_final(ctx, eaeskey, NULL);
     sha_destroy(ctx);
-    
+
     memcpy(raop_buffer->aeskey, eaeskey, 16);
     memcpy(raop_buffer->aesiv, aesiv, RAOP_AESIV_LEN);
 
-    #ifdef DUMP_AUDIO
+#ifdef DUMP_AUDIO
     if (file_keyiv != NULL) {
         fwrite(raop_buffer->aeskey, 16, 1, file_keyiv);
         fwrite(raop_buffer->aesiv, 16, 1, file_keyiv);
         fclose(file_keyiv);
     }
-    #endif
+#endif
 }
 
 raop_buffer_t *
@@ -124,25 +124,25 @@ raop_buffer_destroy(raop_buffer_t *raop_buffer)
         }
     }
 
-	if (raop_buffer) {
-		free(raop_buffer);
-	}
+    if (raop_buffer) {
+        free(raop_buffer);
+    }
 
-    #ifdef DUMP_AUDIO
+#ifdef DUMP_AUDIO
     if (file_aac != NULL) {
         fclose(file_aac);
     }
     if (file_source != NULL) {
         fclose(file_source);
     }
-    #endif
+#endif
 
 }
 
 static short
 seqnum_cmp(unsigned short s1, unsigned short s2)
 {
-	return (s1 - s2);
+    return (s1 - s2);
 }
 
 //#define DUMP_AUDIO
@@ -159,7 +159,7 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
 {
     assert(raop_buffer);
     int encryptedlen;
-    #ifdef DUMP_AUDIO
+#ifdef DUMP_AUDIO
     if (file_aac == NULL) {
         file_aac = fopen("/home/pi/Airplay.aac", "wb");
         file_source = fopen("/home/pi/Airplay.source", "wb");
@@ -169,7 +169,7 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
     if (file_source != NULL) {
         fwrite(&data[12], payloadsize, 1, file_source);
     }
-    #endif
+#endif
 
     encryptedlen = payload_size / 16*16;
     memset(output, 0, payload_size);
@@ -181,12 +181,12 @@ raop_buffer_decrypt(raop_buffer_t *raop_buffer, unsigned char *data, unsigned ch
     memcpy(output + encryptedlen, &data[12 + encryptedlen], payload_size - encryptedlen);
     *outputlen = payload_size;
 
-    #ifdef DUMP_AUDIO
+#ifdef DUMP_AUDIO
     // Decrypted file
     if (file_aac != NULL) {
         fwrite(output, payloadsize, 1, file_aac);
     }
-    #endif
+#endif
 
     return 1;
 }

@@ -43,7 +43,7 @@
 #define DEFAULT_HW_ADDRESS { (char) 0x48, (char) 0x5d, (char) 0x60, (char) 0x7c, (char) 0xee, (char) 0x22 }
 
 int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device,
-        bool low_latency, bool debug_log);
+                 bool low_latency, bool debug_log);
 int stop_server();
 
 static bool running = false;
@@ -54,10 +54,10 @@ static audio_renderer_t *audio_renderer = NULL;
 
 static void signal_handler(int sig) {
     switch (sig) {
-    case SIGINT:
-    case SIGTERM:
-        running = 0;
-        break;
+        case SIGINT:
+        case SIGTERM:
+            running = 0;
+            break;
     }
 }
 
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
             if (i == argc - 1) continue;
             server_name = std::string(argv[++i]);
         } else if (arg == "-b") {
-            show_background = !show_background;  
+            show_background = !show_background;
         } else if (arg == "-a") {
             if (i == argc - 1) continue;
             std::string audio_device_name(argv[++i]);
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
         server_hw_addr.clear();
         parse_hw_addr(mac_address, server_hw_addr);
     }
- 
+
     if (start_server(server_hw_addr, server_name, show_background, audio_device, low_latency, debug_log) != 0) {
         return 1;
     }
@@ -206,7 +206,7 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 }
 
 int start_server(std::vector<char> hw_addr, std::string name, bool show_background, audio_device_t audio_device,
-        bool low_latency, bool debug_log) {
+                 bool low_latency, bool debug_log) {
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.audio_process = audio_process;
@@ -257,7 +257,7 @@ int start_server(std::vector<char> hw_addr, std::string name, bool show_backgrou
     }
 
     raop_set_dnssd(raop, dnssd);
-    
+
     dnssd_register_raop(dnssd, port);
     dnssd_register_airplay(dnssd, port + 1);
 

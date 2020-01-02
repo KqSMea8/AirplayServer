@@ -26,8 +26,8 @@ typedef void (*raop_handler_t)(raop_conn_t *, http_request_t *,
 
 static void
 raop_handler_info(raop_conn_t *conn,
-                       http_request_t *request, http_response_t *response,
-                       char **response_data, int *response_datalen)
+                  http_request_t *request, http_response_t *response,
+                  char **response_data, int *response_datalen)
 {
     assert(conn->raop->dnssd);
 
@@ -209,49 +209,49 @@ raop_handler_pairverify(raop_conn_t *conn,
         return;
     }
     switch (data[0]) {
-    case 1:
-        if (datalen != 4 + 32 + 32) {
-            logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
-            return;
-        }
-        /* We can fall through these errors, the result will just be garbage... */
-        if (pairing_session_handshake(conn->pairing, data + 4, data + 4 + 32)) {
-            logger_log(conn->raop->logger, LOGGER_ERR, "Error initializing pair-verify handshake");
-        }
-        if (pairing_session_get_public_key(conn->pairing, public_key)) {
-            logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ECDH public key");
-        }
-        if (pairing_session_get_signature(conn->pairing, signature)) {
-            logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ED25519 signature");
-        }
-        *response_data = malloc(sizeof(public_key) + sizeof(signature));
-        if (*response_data) {
-            http_response_add_header(response, "Content-Type", "application/octet-stream");
-            memcpy(*response_data, public_key, sizeof(public_key));
-            memcpy(*response_data + sizeof(public_key), signature, sizeof(signature));
-            *response_datalen = sizeof(public_key) + sizeof(signature);
-        }
-        break;
-    case 0:
-        if (datalen != 4 + 64) {
-            logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
-            return;
-        }
+        case 1:
+            if (datalen != 4 + 32 + 32) {
+                logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
+                return;
+            }
+            /* We can fall through these errors, the result will just be garbage... */
+            if (pairing_session_handshake(conn->pairing, data + 4, data + 4 + 32)) {
+                logger_log(conn->raop->logger, LOGGER_ERR, "Error initializing pair-verify handshake");
+            }
+            if (pairing_session_get_public_key(conn->pairing, public_key)) {
+                logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ECDH public key");
+            }
+            if (pairing_session_get_signature(conn->pairing, signature)) {
+                logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ED25519 signature");
+            }
+            *response_data = malloc(sizeof(public_key) + sizeof(signature));
+            if (*response_data) {
+                http_response_add_header(response, "Content-Type", "application/octet-stream");
+                memcpy(*response_data, public_key, sizeof(public_key));
+                memcpy(*response_data + sizeof(public_key), signature, sizeof(signature));
+                *response_datalen = sizeof(public_key) + sizeof(signature);
+            }
+            break;
+        case 0:
+            if (datalen != 4 + 64) {
+                logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
+                return;
+            }
 
-        if (pairing_session_finish(conn->pairing, data + 4)) {
-            logger_log(conn->raop->logger, LOGGER_ERR, "Incorrect pair-verify signature");
-            http_response_set_disconnect(response, 1);
-            return;
-        }
-        http_response_add_header(response, "Content-Type", "application/octet-stream");
-        break;
+            if (pairing_session_finish(conn->pairing, data + 4)) {
+                logger_log(conn->raop->logger, LOGGER_ERR, "Incorrect pair-verify signature");
+                http_response_set_disconnect(response, 1);
+                return;
+            }
+            http_response_add_header(response, "Content-Type", "application/octet-stream");
+            break;
     }
 }
 
 static void
 raop_handler_fpsetup(raop_conn_t *conn,
-                        http_request_t *request, http_response_t *response,
-                        char **response_data, int *response_datalen)
+                     http_request_t *request, http_response_t *response,
+                     char **response_data, int *response_datalen)
 {
     const unsigned char *data;
     int datalen;
@@ -557,16 +557,16 @@ raop_handler_set_parameter(raop_conn_t *conn,
 
 static void
 raop_handler_feedback(raop_conn_t *conn,
-                           http_request_t *request, http_response_t *response,
-                           char **response_data, int *response_datalen)
+                      http_request_t *request, http_response_t *response,
+                      char **response_data, int *response_datalen)
 {
     logger_log(conn->raop->logger, LOGGER_DEBUG, "raop_handler_feedback");
 }
 
 static void
 raop_handler_record(raop_conn_t *conn,
-                      http_request_t *request, http_response_t *response,
-                      char **response_data, int *response_datalen)
+                    http_request_t *request, http_response_t *response,
+                    char **response_data, int *response_datalen)
 {
     logger_log(conn->raop->logger, LOGGER_DEBUG, "raop_handler_record");
     http_response_add_header(response, "Audio-Latency", "11025");

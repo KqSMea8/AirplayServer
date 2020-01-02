@@ -342,7 +342,7 @@ dnssd_register_airplay(dnssd_t *dnssd, unsigned short port)
     return 1;
 }
 
-char * 
+char *
 dnssd_get_airplay_txt(dnssd_t *dnssd, int *length)
 {
     *length = dnssd->TXTRecordGetLength(&dnssd->airplay_record);

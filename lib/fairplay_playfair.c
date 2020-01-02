@@ -13,24 +13,24 @@ char reply_message[4][142] = {{0x46,0x50,0x4c,0x59,0x03,0x01,0x02,0x00,0x00,0x00
 char fp_header[] = {0x46, 0x50, 0x4c, 0x59, 0x03, 0x01, 0x04, 0x00, 0x00, 0x00, 0x00, 0x14};
 
 struct fairplay_s {
-	logger_t *logger;
+    logger_t *logger;
 
-	unsigned char keymsg[164];
-	unsigned int keymsglen;
+    unsigned char keymsg[164];
+    unsigned int keymsglen;
 };
 
 fairplay_t *
 fairplay_init(logger_t *logger)
 {
-	fairplay_t *fp;
+    fairplay_t *fp;
 
-	fp = calloc(1, sizeof(fairplay_t));
-	if (!fp) {
-		return NULL;
-	}
-	fp->logger = logger;
+    fp = calloc(1, sizeof(fairplay_t));
+    if (!fp) {
+        return NULL;
+    }
+    fp->logger = logger;
 
-	return fp;
+    return fp;
 }
 
 int
@@ -72,16 +72,16 @@ fairplay_handshake(fairplay_t *fp, const unsigned char req[164], unsigned char r
 int
 fairplay_decrypt(fairplay_t *fp, const unsigned char input[72], unsigned char output[16])
 {
-	if (fp->keymsglen != 164) {
-		return -1;
-	}
+    if (fp->keymsglen != 164) {
+        return -1;
+    }
 
-	playfair_decrypt(fp->keymsg, (unsigned char *) input, output);
-	return 0;
+    playfair_decrypt(fp->keymsg, (unsigned char *) input, output);
+    return 0;
 }
 
 void
 fairplay_destroy(fairplay_t *fp)
 {
-	free(fp);
+    free(fp);
 }

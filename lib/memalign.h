@@ -40,9 +40,9 @@
 
 #define SYSTEM_GET_PAGESIZE(ret) ret = sysconf(_SC_PAGESIZE)
 #define SYSTEM_GET_TIME(ret) do {\
-	struct timeval tv;\
-	gettimeofday(&tv, NULL);\
-	ret = (unsigned int)(tv.tv_sec*1000 + tv.tv_usec/1000);\
+    struct timeval tv;\
+    gettimeofday(&tv, NULL);\
+    ret = (unsigned int)(tv.tv_sec*1000 + tv.tv_usec/1000);\
 } while(0)
 
 #define ALIGNED_MALLOC(memptr, alignment, size) if (posix_memalign((void **)&memptr, alignment, size)) memptr = NULL

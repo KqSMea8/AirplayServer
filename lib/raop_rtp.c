@@ -133,7 +133,7 @@ raop_rtp_parse_remote(raop_rtp_t *raop_rtp, const unsigned char *remote, int rem
 
 raop_rtp_t *
 raop_rtp_init(logger_t *logger, raop_callbacks_t *callbacks, raop_ntp_t *ntp, const unsigned char *remote, int remotelen,
-               const unsigned char *aeskey, const unsigned char *aesiv, const unsigned char *ecdh_secret)
+              const unsigned char *aeskey, const unsigned char *aesiv, const unsigned char *ecdh_secret)
 {
     raop_rtp_t *raop_rtp;
 
@@ -162,9 +162,9 @@ raop_rtp_init(logger_t *logger, raop_callbacks_t *callbacks, raop_ntp_t *ntp, co
         return NULL;
     }
     if (raop_rtp_parse_remote(raop_rtp, remote, remotelen) < 0) {
-		free(raop_rtp);
-		return NULL;
-	}
+        free(raop_rtp);
+        return NULL;
+    }
 
     raop_rtp->running = 0;
     raop_rtp->joined = 1;
@@ -395,7 +395,7 @@ raop_rtp_thread_udp(void *arg)
     unsigned int packetlen;
     struct sockaddr_storage saddr;
     socklen_t saddrlen;
-    assert(raop_rtp);    
+    assert(raop_rtp);
 
     while(1) {
         fd_set rfds;
@@ -431,37 +431,37 @@ raop_rtp_thread_udp(void *arg)
         }
 
         if (FD_ISSET(raop_rtp->csock, &rfds)) {
-           saddrlen = sizeof(saddr);
-           packetlen = recvfrom(raop_rtp->csock, (char *)packet, sizeof(packet), 0,
-                                (struct sockaddr *)&saddr, &saddrlen);
+            saddrlen = sizeof(saddr);
+            packetlen = recvfrom(raop_rtp->csock, (char *)packet, sizeof(packet), 0,
+                                 (struct sockaddr *)&saddr, &saddrlen);
 
-           memcpy(&raop_rtp->control_saddr, &saddr, saddrlen);
-           raop_rtp->control_saddr_len = saddrlen;
-           int type_c = packet[1] & ~0x80;
-           logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp type_c 0x%02x, packetlen = %d", type_c, packetlen);
-           if (type_c == 0x56) {
-               /* Handle resent data packet */
-               uint32_t rtp_timestamp =  (packet[4 + 4] << 24) | (packet[4 + 5] << 16) | (packet[4 + 6] << 8) | packet[4 + 7];
-               uint64_t ntp_timestamp = raop_rtp_convert_rtp_time(raop_rtp, rtp_timestamp);
-               uint64_t ntp_now = raop_ntp_get_local_time(raop_rtp->ntp);
-               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp audio resent: ntp = %llu, now = %llu, latency=%lld, rtp=%u",
-                          ntp_timestamp, ntp_now, ((int64_t) ntp_now) - ((int64_t) ntp_timestamp), rtp_timestamp);
-               int result = raop_buffer_enqueue(raop_rtp->buffer, packet + 4, packetlen - 4, ntp_timestamp, 1);
-               assert(result >= 0);
-           } else if (type_c == 0x54 && packetlen >= 20) {
-               // The unit for the rtp clock is 1 / sample rate = 1 / 44100
-               uint32_t sync_rtp = byteutils_get_int_be(packet, 4) - 11025;
-               uint64_t sync_ntp_raw = byteutils_get_long_be(packet, 8);
-               uint64_t sync_ntp_remote = raop_ntp_timestamp_to_micro_seconds(sync_ntp_raw, true);
-               uint64_t sync_ntp_local = raop_ntp_convert_remote_time(raop_rtp->ntp, sync_ntp_remote);
-               // It's not clear what the additional rtp timestamp indicates
-               uint32_t next_rtp = byteutils_get_int_be(packet, 16);
-               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp sync: ntp=%llu, local ntp: %llu, rtp=%u, rtp_next=%u",
-                       sync_ntp_remote, sync_ntp_local, sync_rtp, next_rtp);
-               raop_rtp_sync_clock(raop_rtp, sync_rtp, sync_ntp_local);
-           } else {
-               logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp unknown packet");
-           }
+            memcpy(&raop_rtp->control_saddr, &saddr, saddrlen);
+            raop_rtp->control_saddr_len = saddrlen;
+            int type_c = packet[1] & ~0x80;
+            logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp type_c 0x%02x, packetlen = %d", type_c, packetlen);
+            if (type_c == 0x56) {
+                /* Handle resent data packet */
+                uint32_t rtp_timestamp =  (packet[4 + 4] << 24) | (packet[4 + 5] << 16) | (packet[4 + 6] << 8) | packet[4 + 7];
+                uint64_t ntp_timestamp = raop_rtp_convert_rtp_time(raop_rtp, rtp_timestamp);
+                uint64_t ntp_now = raop_ntp_get_local_time(raop_rtp->ntp);
+                logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp audio resent: ntp = %llu, now = %llu, latency=%lld, rtp=%u",
+                           ntp_timestamp, ntp_now, ((int64_t) ntp_now) - ((int64_t) ntp_timestamp), rtp_timestamp);
+                int result = raop_buffer_enqueue(raop_rtp->buffer, packet + 4, packetlen - 4, ntp_timestamp, 1);
+                assert(result >= 0);
+            } else if (type_c == 0x54 && packetlen >= 20) {
+                // The unit for the rtp clock is 1 / sample rate = 1 / 44100
+                uint32_t sync_rtp = byteutils_get_int_be(packet, 4) - 11025;
+                uint64_t sync_ntp_raw = byteutils_get_long_be(packet, 8);
+                uint64_t sync_ntp_remote = raop_ntp_timestamp_to_micro_seconds(sync_ntp_raw, true);
+                uint64_t sync_ntp_local = raop_ntp_convert_remote_time(raop_rtp->ntp, sync_ntp_remote);
+                // It's not clear what the additional rtp timestamp indicates
+                uint32_t next_rtp = byteutils_get_int_be(packet, 16);
+                logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp sync: ntp=%llu, local ntp: %llu, rtp=%u, rtp_next=%u",
+                           sync_ntp_remote, sync_ntp_local, sync_rtp, next_rtp);
+                raop_rtp_sync_clock(raop_rtp, sync_rtp, sync_ntp_local);
+            } else {
+                logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp unknown packet");
+            }
         }
 
         if (FD_ISSET(raop_rtp->dsock, &rfds)) {
@@ -482,7 +482,7 @@ raop_rtp_thread_udp(void *arg)
                 uint64_t ntp_timestamp = raop_rtp_convert_rtp_time(raop_rtp, rtp_timestamp);
                 uint64_t ntp_now = raop_ntp_get_local_time(raop_rtp->ntp);
                 logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp audio: ntp = %llu, now = %llu, latency=%lld, rtp=%u",
-                        ntp_timestamp, ntp_now, ((int64_t) ntp_now) - ((int64_t) ntp_timestamp), rtp_timestamp);
+                           ntp_timestamp, ntp_now, ((int64_t) ntp_now) - ((int64_t) ntp_timestamp), rtp_timestamp);
 
                 int result = raop_buffer_enqueue(raop_rtp->buffer, packet, packetlen, ntp_timestamp, 1);
                 assert(result >= 0);
