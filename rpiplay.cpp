@@ -36,14 +36,14 @@
 #define VERSION "1.2"
 
 #define DEFAULT_NAME "RPiPlay"
-#define DEFAULT_BACKGROUND 2
+#define DEFAULT_BACKGROUND_MODE BACKGROUND_MODE_ON
 #define DEFAULT_AUDIO_DEVICE AUDIO_DEVICE_HDMI
 #define DEFAULT_LOW_LATENCY false
 #define DEFAULT_DEBUG_LOG false
 #define DEFAULT_HW_ADDRESS { (char) 0x48, (char) 0x5d, (char) 0x60, (char) 0x7c, (char) 0xee, (char) 0x22 }
 
-int start_server(std::vector<char> hw_addr, std::string name, int background_mode, audio_device_t audio_device,
-                 bool low_latency, bool debug_log);
+int start_server(std::vector<char> hw_addr, std::string name, background_mode_t background_mode,
+                 audio_device_t audio_device, bool low_latency, bool debug_log);
 
 int stop_server();
 
@@ -94,10 +94,10 @@ std::string find_mac() {
 
 void print_info(char *name) {
     printf("RPiPlay %s: An open-source AirPlay mirroring server for Raspberry Pi\n", VERSION);
-    printf("Usage: %s [-b (hide|auto|always)] [-n name] [-a (hdmi|analog|off)]\n", name);
+    printf("Usage: %s [-b (on|auto|off)] [-n name] [-a (hdmi|analog|off)]\n", name);
     printf("Options:\n");
     printf("-n name               Specify the network name of the AirPlay server\n");
-    printf("-b (hide|auto|always) Hide the black background behind the video\n");
+    printf("-b (on|auto|off)      Show black background always, only during active connection, or never\n");
     printf("-a (hdmi|analog|off)  Set audio output device\n");
     printf("-l                    Enable low-latency mode (disables render clock)\n");
     printf("-d                    Enable debug logging\n");
@@ -107,13 +107,7 @@ void print_info(char *name) {
 int main(int argc, char *argv[]) {
     init_signals();
 
-    /*
-     * background mode:
-     *   0: no background
-     *   1: draw background only while there's an active connection
-     *   2: always draw background
-     */
-    int background = DEFAULT_BACKGROUND;
+    background_mode_t background = DEFAULT_BACKGROUND_MODE;
     std::string server_name = DEFAULT_NAME;
     std::vector<char> server_hw_addr = DEFAULT_HW_ADDRESS;
     audio_device_t audio_device = DEFAULT_AUDIO_DEVICE;
@@ -127,11 +121,16 @@ int main(int argc, char *argv[]) {
             if (i == argc - 1) continue;
             server_name = std::string(argv[++i]);
         } else if (arg == "-b") {
-            if (i == argc - 1) continue;
+            // For backwards-compatibility, make just -b disable the background
+            if (i == argc - 1 || argv[i + 1][0] == '-') {
+                background = BACKGROUND_MODE_OFF;
+                continue;
+            }
+
             std::string background_mode(argv[++i]);
-            background = background_mode == "hide" ? 0 :
-                         background_mode == "auto" ? 1 :
-                         2;
+            background = background_mode == "off" ? BACKGROUND_MODE_OFF :
+                         background_mode == "auto" ? BACKGROUND_MODE_AUTO :
+                         BACKGROUND_MODE_ON;
         } else if (arg == "-a") {
             if (i == argc - 1) continue;
             std::string audio_device_name(argv[++i]);
@@ -224,8 +223,8 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 
 }
 
-int start_server(std::vector<char> hw_addr, std::string name, int background, audio_device_t audio_device,
-                 bool low_latency, bool debug_log) {
+int start_server(std::vector<char> hw_addr, std::string name, background_mode_t background_mode,
+                 audio_device_t audio_device, bool low_latency, bool debug_log) {
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.conn_init = conn_init;
@@ -251,7 +250,7 @@ int start_server(std::vector<char> hw_addr, std::string name, int background, au
 
     if (low_latency) logger_log(render_logger, LOGGER_INFO, "Using low-latency mode");
 
-    if ((video_renderer = video_renderer_init(render_logger, background, low_latency)) == NULL) {
+    if ((video_renderer = video_renderer_init(render_logger, background_mode, low_latency)) == NULL) {
         LOGE("Could not init video renderer");
         return -1;
     }

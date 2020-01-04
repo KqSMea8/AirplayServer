@@ -44,7 +44,7 @@
 struct video_renderer_s {
     logger_t *logger;
     bool low_latency;
-    int background;
+    background_mode_t background_mode;
 
     uint16_t background_visits;
     DISPMANX_ELEMENT_HANDLE_T background_element;
@@ -120,17 +120,10 @@ void video_renderer_update_background(video_renderer_t *renderer, int type) {
         renderer->background_visits = 0;
     }
 
-    if (renderer->background == 0) { // no background
-        return;
-    }
-
-    if (renderer->background == 2) { // always draw background
+    if (renderer->background_mode == BACKGROUND_MODE_ON) {
         video_renderer_render_background(renderer);
-        return;
-    }
-
-    if (renderer->background == 1) {
-        // show background when connection come and hide background when all connections go away
+    } else if (renderer->background_mode == BACKGROUND_MODE_AUTO) {
+        // Show background when connection is made and hide background when all connections are gone
         if (renderer->background_visits > 0) {
             video_renderer_render_background(renderer);
         } else {
@@ -297,7 +290,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     return 1;
 }
 
-video_renderer_t *video_renderer_init(logger_t *logger, int background, bool low_latency) {
+video_renderer_t *video_renderer_init(logger_t *logger, background_mode_t background_mode, bool low_latency) {
     video_renderer_t *renderer;
     renderer = calloc(1, sizeof(video_renderer_t));
     if (!renderer) {
@@ -306,7 +299,7 @@ video_renderer_t *video_renderer_init(logger_t *logger, int background, bool low
 
     renderer->logger = logger;
     renderer->low_latency = low_latency;
-    renderer->background = background;
+    renderer->background_mode = background_mode;
 
     renderer->first_packet_time = 0;
     renderer->input_frames = 0;

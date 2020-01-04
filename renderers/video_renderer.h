@@ -35,9 +35,15 @@ extern "C" {
 #include "../lib/logger.h"
 #include "../lib/raop_ntp.h"
 
+typedef enum background_mode_e {
+    BACKGROUND_MODE_ON,   // Always show background
+    BACKGROUND_MODE_AUTO, // Only show background while there's an active connection
+    BACKGROUND_MODE_OFF   // Never show background
+} background_mode_t;
+
 typedef struct video_renderer_s video_renderer_t;
 
-video_renderer_t *video_renderer_init(logger_t *logger, int background, bool low_latency);
+video_renderer_t *video_renderer_init(logger_t *logger, background_mode_t background_mode, bool low_latency);
 void video_renderer_start(video_renderer_t *renderer);
 void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, unsigned char* data, int data_len, uint64_t pts, int type);
 void video_renderer_flush(video_renderer_t *renderer);
