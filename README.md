@@ -61,7 +61,7 @@ At the moment, these options are implemented:
 
 **-n name**: Specify the network name of the AirPlay server
 
-**-b**: Hide the black background behind the video
+**-b (on|auto|off)**: Show black background always, only during active connection, or never
 
 **-a (hdmi|analog|off)**: Set audio output device
 
