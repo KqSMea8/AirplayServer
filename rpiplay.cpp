@@ -40,10 +40,11 @@
 #define DEFAULT_AUDIO_DEVICE AUDIO_DEVICE_HDMI
 #define DEFAULT_LOW_LATENCY false
 #define DEFAULT_DEBUG_LOG false
+#define DEFAULT_ROTATE 0
 #define DEFAULT_HW_ADDRESS { (char) 0x48, (char) 0x5d, (char) 0x60, (char) 0x7c, (char) 0xee, (char) 0x22 }
 
 int start_server(std::vector<char> hw_addr, std::string name, background_mode_t background_mode,
-                 audio_device_t audio_device, bool low_latency, bool debug_log);
+                 audio_device_t audio_device, bool low_latency, bool debug_log, int rotation);
 
 int stop_server();
 
@@ -112,6 +113,7 @@ int main(int argc, char *argv[]) {
     std::vector<char> server_hw_addr = DEFAULT_HW_ADDRESS;
     audio_device_t audio_device = DEFAULT_AUDIO_DEVICE;
     bool low_latency = DEFAULT_LOW_LATENCY;
+    int rotation = DEFAULT_ROTATE;
     bool debug_log = DEFAULT_DEBUG_LOG;
 
     // Parse arguments
@@ -139,6 +141,8 @@ int main(int argc, char *argv[]) {
                            AUDIO_DEVICE_NONE;
         } else if (arg == "-l") {
             low_latency = !low_latency;
+        } else if (arg == "-r") {
+            rotation = atoi(argv[++i]);
         } else if (arg == "-d") {
             debug_log = !debug_log;
         } else if (arg == "-h" || arg == "-v") {
@@ -153,7 +157,7 @@ int main(int argc, char *argv[]) {
         parse_hw_addr(mac_address, server_hw_addr);
     }
 
-    if (start_server(server_hw_addr, server_name, background, audio_device, low_latency, debug_log) != 0) {
+    if (start_server(server_hw_addr, server_name, background, audio_device, low_latency, debug_log, rotation) != 0) {
         return 1;
     }
 
@@ -224,7 +228,7 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 }
 
 int start_server(std::vector<char> hw_addr, std::string name, background_mode_t background_mode,
-                 audio_device_t audio_device, bool low_latency, bool debug_log) {
+                 audio_device_t audio_device, bool low_latency, bool debug_log, int rotation) {
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.conn_init = conn_init;
@@ -250,7 +254,7 @@ int start_server(std::vector<char> hw_addr, std::string name, background_mode_t 
 
     if (low_latency) logger_log(render_logger, LOGGER_INFO, "Using low-latency mode");
 
-    if ((video_renderer = video_renderer_init(render_logger, background_mode, low_latency)) == NULL) {
+    if ((video_renderer = video_renderer_init(render_logger, background_mode, low_latency, rotation)) == NULL) {
         LOGE("Could not init video renderer");
         return -1;
     }

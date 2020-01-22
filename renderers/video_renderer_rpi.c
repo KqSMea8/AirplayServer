@@ -152,7 +152,7 @@ void omx_event_handler(void *userdata, COMPONENT_T *comp, OMX_U32 data) {
     logger_log(renderer->logger, LOGGER_DEBUG, "Video renderer config change: %p: %d", comp, data);
 }
 
-int video_renderer_init_decoder(video_renderer_t *renderer) {
+int video_renderer_init_decoder(video_renderer_t *renderer, int rotation) {
     memset(renderer->components, 0, sizeof(renderer->components));
     memset(renderer->tunnels, 0, sizeof(renderer->tunnels));
 
@@ -269,6 +269,29 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
         return -15;
     }
 
+    // Setup rotation
+    if (rotation != 0) {
+	    OMX_CONFIG_ROTATIONTYPE omx_rotation;
+	    memset(&omx_rotation, 0, sizeof(OMX_CONFIG_ROTATIONTYPE));
+	    omx_rotation.nSize = sizeof(OMX_CONFIG_ROTATIONTYPE);
+	    // Check the rotation here
+	    if (rotation != 90 && rotation != -90 && rotation != 180 && rotation != -180 && rotation != 270 && rotation != -270) {
+		printf("Error: Rotation must be +/- 0,90,180,270\n");
+		video_renderer_destroy_decoder(renderer);
+		return -15;
+	    }
+	    omx_rotation.nRotation = rotation;
+	    omx_rotation.nPortIndex = 90;
+	    omx_rotation.nVersion.nVersion = OMX_VERSION;
+	    OMX_ERRORTYPE error = OMX_SetConfig(ilclient_get_handle(renderer->video_renderer), OMX_IndexConfigCommonRotate,
+				 &omx_rotation);
+	    if (error != OMX_ErrorNone) {
+		printf("Error: %x\n", error);
+		video_renderer_destroy_decoder(renderer);
+		return -15;
+	    }
+    }
+
     // Set decoder format
     ilclient_change_component_state(renderer->video_decoder, OMX_StateIdle);
     OMX_VIDEO_PARAM_PORTFORMATTYPE format;
@@ -290,7 +313,7 @@ int video_renderer_init_decoder(video_renderer_t *renderer) {
     return 1;
 }
 
-video_renderer_t *video_renderer_init(logger_t *logger, background_mode_t background_mode, bool low_latency) {
+video_renderer_t *video_renderer_init(logger_t *logger, background_mode_t background_mode, bool low_latency, int rotation) {
     video_renderer_t *renderer;
     renderer = calloc(1, sizeof(video_renderer_t));
     if (!renderer) {
@@ -304,7 +327,7 @@ video_renderer_t *video_renderer_init(logger_t *logger, background_mode_t backgr
     renderer->first_packet_time = 0;
     renderer->input_frames = 0;
 
-    if (video_renderer_init_decoder(renderer) != 1) {
+    if (video_renderer_init_decoder(renderer, rotation) != 1) {
         free(renderer);
         renderer = NULL;
     }
