@@ -95,12 +95,13 @@ std::string find_mac() {
 
 void print_info(char *name) {
     printf("RPiPlay %s: An open-source AirPlay mirroring server for Raspberry Pi\n", VERSION);
-    printf("Usage: %s [-b (on|auto|off)] [-n name] [-a (hdmi|analog|off)]\n", name);
+    printf("Usage: %s [-n name] [-b (on|auto|off)] [-r (90|180|270)] [-l] [-a (hdmi|analog|off)]\n", name);
     printf("Options:\n");
     printf("-n name               Specify the network name of the AirPlay server\n");
     printf("-b (on|auto|off)      Show black background always, only during active connection, or never\n");
-    printf("-a (hdmi|analog|off)  Set audio output device\n");
+    printf("-r (90|180|270)       Specify image rotation in multiples of 90 degrees\n");
     printf("-l                    Enable low-latency mode (disables render clock)\n");
+    printf("-a (hdmi|analog|off)  Set audio output device\n");
     printf("-d                    Enable debug logging\n");
     printf("-v/-h                 Displays this help and version information\n");
 }
