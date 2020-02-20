@@ -59,17 +59,19 @@ GCC 5 or later is required.
 Start the rpiplay executable and an AirPlay mirror target device will appear in the network.
 At the moment, these options are implemented:
 
-**-n name**: Specify the network name of the AirPlay server
+**-n name**: Specify the network name of the AirPlay server.
 
-**-b (on|auto|off)**: Show black background always, only during active connection, or never
+**-b (on|auto|off)**: Show black background always, only during active connection, or never.
 
-**-a (hdmi|analog|off)**: Set audio output device
+**-r (90|180|270)**: Specify image rotation in multiples of 90 degrees.
 
 **-l**: Enables low-latency mode. Low-latency mode reduces latency by effectively rendering audio and video frames as soon as they are received, ignoring the associated timestamps. As a side effect, playback will be choppy and audio-video sync will be noticably off.
 
+**-a (hdmi|analog|off)**: Set audio output device
+
 **-d**: Enables debug logging. Will lead to choppy playback due to heavy console output.
 
-**-v/-h**: Displays short help and version information
+**-v/-h**: Displays short help and version information.
 
 
 # Disclaimer
