@@ -13,3 +13,5 @@ add_subdirectory(renderers)
 
 add_executable( rpiplay rpiplay.cpp)
 target_link_libraries ( rpiplay renderers airplay )
+
+install(PROGRAMS rpiplay DESTINATION bin)
