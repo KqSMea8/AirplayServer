@@ -379,6 +379,26 @@ it. Hence, a fully platform-independant way to use alignment is not supported.
 #define LNK_SECTION_L1_DATA_A
 #define LNK_SECTION_L1_DATA_B
 
+/**************************************************
+ * Macros regarding static code analysis
+ **************************************************/
+#ifdef __cplusplus
+#if !defined(__has_cpp_attribute)
+#define __has_cpp_attribute(x) 0
+#endif
+#if defined(__clang__) && __has_cpp_attribute(clang::fallthrough)
+#define FDK_FALLTHROUGH [[clang::fallthrough]]
+#endif
+#endif
+
+#ifndef FDK_FALLTHROUGH
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+#define FDK_FALLTHROUGH __attribute__((fallthrough))
+#else
+#define FDK_FALLTHROUGH
+#endif
+#endif
+
 #ifdef _MSC_VER
 /*
  * Sometimes certain features are excluded from compilation and therefore the

@@ -300,8 +300,9 @@ static DRC_ERROR _compressorIO_sigmoid(const CUSTOM_DRC_CHAR_SIGMOID* pCChar,
   FIXP_SGL exp = pCChar->exp;
   DRC_ERROR err = DE_OK;
 
-  tmp = fMultDiv2(DRC_INPUT_LOUDNESS_TARGET - inLevelDb, pCChar->ioRatio);
-  tmp = SATURATE_LEFT_SHIFT(tmp, 2 + 1, DFRACT_BITS);
+  tmp = fMultDiv2((DRC_INPUT_LOUDNESS_TARGET >> 1) - (inLevelDb >> 1),
+                  pCChar->ioRatio);
+  tmp = SATURATE_LEFT_SHIFT(tmp, 2 + 1 + 1, DFRACT_BITS);
   if (exp < (FIXP_SGL)MAXVAL_SGL) {
     /* x = tmp / gainDbLimit; */
     /* *outGainDb = tmp / pow(1.0f + pow(x, exp), 1.0f/exp); */
@@ -675,6 +676,7 @@ prepareDrcGain(HANDLE_DRC_GAIN_DECODER hGainDec,
       nDrcBands = pActiveDrc->bandCountForChannelGroup[g];
       for (b = 0; b < nDrcBands; b++) {
         DRC_ERROR err = DE_OK;
+        if (gainSetIndex >= 12) return DE_PARAM_OUT_OF_RANGE;
         GAIN_SET* pGainSet = &(pCoef->gainSet[gainSetIndex]);
         int seq = pGainSet->gainSequenceIndex[b];
         DRC_CHARACTERISTIC* pDChar = &(pGainSet->drcCharacteristic[b]);
@@ -693,6 +695,7 @@ prepareDrcGain(HANDLE_DRC_GAIN_DECODER hGainDec,
         err = _prepareDrcCharacteristic(pDChar, pCoef, b, &nodeMod);
         if (err) return err;
 
+        if (seq >= 12) return DE_PARAM_OUT_OF_RANGE;
         /* copy a node buffer and convert from dB to linear */
         pLnb->nNodes[lnbp] = fMin((int)hUniDrcGain->nNodes[seq], 16);
         for (i = 0; i < pLnb->nNodes[lnbp]; i++) {

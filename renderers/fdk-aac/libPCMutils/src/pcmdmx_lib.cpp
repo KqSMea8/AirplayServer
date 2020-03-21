@@ -583,6 +583,9 @@ static PCMDMX_ERROR getChannelMode(
         (channelType[ch] & 0x0F) - 1,
         0); /* Assign all undefined channels (ACT_NONE) to front channels. */
 
+    if (channelIndices[ch] >= numCh[channelType[ch] >> 4][chGrp])
+      return PCMDMX_INVALID_CH_CONFIG;
+
     spkrPos[ch] = getSpeakerPos(channelType[ch], channelIndices[ch],
                                 numCh[channelType[ch] >> 4][chGrp]);
 
@@ -1043,6 +1046,7 @@ static PCMDMX_ERROR getMixFactors(const UCHAR inModeIsCfg,
       case CH_MODE_3_2_1_0:
         isValidCfg = FALSE;
         err = PCMDMX_INVALID_MODE;
+        FDK_FALLTHROUGH;
       case CH_MODE_3_0_3_1: /* chCfg 11 */
         /* 6.1ch:  C' = C;  L' = L;  R' = R;  LFE' = LFE;
                    Ls' = Ls*dmix_a_idx + Cs*dmix_b_idx;
@@ -1080,9 +1084,11 @@ static PCMDMX_ERROR getMixFactors(const UCHAR inModeIsCfg,
                       LEFT_REAR_CHANNEL, FL2FXCONST_DMX(0.5f), 1);
         dmxSetChannel(mixFactors, mixScales, LEFT_REAR_CHANNEL,
                       LEFT_REAR_CHANNEL, FL2FXCONST_DMX(0.5f), 1);
+        FDK_FALLTHROUGH;
       case CH_MODE_5_2_1_0:
         isValidCfg = FALSE;
         err = PCMDMX_INVALID_MODE;
+        FDK_FALLTHROUGH;
       case CH_MODE_5_0_2_1: /* chCfg 7 || 14 */
         if (inChCfg == 14) {
           /* 7.1ch Front Height:  C' = C;  Ls' = Ls;  Rs' = Rs;  LFE' = LFE;
