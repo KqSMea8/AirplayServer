@@ -32,13 +32,13 @@ raop_handler_info(raop_conn_t *conn,
     assert(conn->raop->dnssd);
 
     int airplay_txt_len = 0;
-    char *airplay_txt = dnssd_get_airplay_txt(conn->raop->dnssd, &airplay_txt_len);
+    const char *airplay_txt = dnssd_get_airplay_txt(conn->raop->dnssd, &airplay_txt_len);
 
     int name_len = 0;
-    char *name = dnssd_get_name(conn->raop->dnssd, &name_len);
+    const char *name = dnssd_get_name(conn->raop->dnssd, &name_len);
 
     int hw_addr_raw_len = 0;
-    char *hw_addr_raw = dnssd_get_hw_addr(conn->raop->dnssd, &hw_addr_raw_len);
+    const char *hw_addr_raw = dnssd_get_hw_addr(conn->raop->dnssd, &hw_addr_raw_len);
 
     char *hw_addr = calloc(1, 3 * hw_addr_raw_len);
     int hw_addr_len = utils_hwaddr_airplay(hw_addr, 3 * hw_addr_raw_len, hw_addr_raw, hw_addr_raw_len);

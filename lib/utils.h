@@ -19,5 +19,5 @@ char *utils_strsep(char **stringp, const char *delim);
 int utils_read_file(char **dst, const char *pemstr);
 int utils_hwaddr_raop(char *str, int strlen, const char *hwaddr, int hwaddrlen);
 int utils_hwaddr_airplay(char *str, int strlen, const char *hwaddr, int hwaddrlen);
-char *utils_parse_hex(char *str, int str_len, int *data_len);
+char *utils_parse_hex(const char *str, int str_len, int *data_len);
 #endif

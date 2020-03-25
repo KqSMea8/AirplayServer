@@ -143,7 +143,7 @@ utils_hwaddr_airplay(char *str, int strlen, const char *hwaddr, int hwaddrlen)
     return j;
 }
 
-char *utils_parse_hex(char *str, int str_len, int *data_len) {
+char *utils_parse_hex(const char *str, int str_len, int *data_len) {
     assert(str_len % 2 == 0);
 
     char *data = malloc(str_len / 2);

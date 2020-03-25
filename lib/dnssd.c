@@ -342,21 +342,21 @@ dnssd_register_airplay(dnssd_t *dnssd, unsigned short port)
     return 1;
 }
 
-char *
+const char *
 dnssd_get_airplay_txt(dnssd_t *dnssd, int *length)
 {
     *length = dnssd->TXTRecordGetLength(&dnssd->airplay_record);
     return dnssd->TXTRecordGetBytesPtr(&dnssd->airplay_record);
 }
 
-char *
+const char *
 dnssd_get_name(dnssd_t *dnssd, int *length)
 {
     *length = dnssd->name_len;
     return dnssd->name;
 }
 
-char *
+const char *
 dnssd_get_hw_addr(dnssd_t *dnssd, int *length)
 {
     *length = dnssd->hw_addr_len;
