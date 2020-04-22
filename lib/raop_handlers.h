@@ -478,12 +478,12 @@ raop_handler_get_parameter(raop_conn_t *conn,
     if (!strcmp(content_type, "text/parameters")) {
         const char *current = data;
 
-        while (current) {
+        while (current && (datalen - (current - data) > 0)) {
             const char *next;
             int handled = 0;
 
             /* This is a bit ugly, but seems to be how airport works too */
-            if (!strncmp(current, "volume\r\n", 8)) {
+            if ((datalen - (current - data) >= 8) && !strncmp(current, "volume\r\n", 8)) {
                 const char volume[] = "volume: 0.0\r\n";
 
                 http_response_add_header(response, "Content-Type", "text/parameters");
@@ -494,12 +494,15 @@ raop_handler_get_parameter(raop_conn_t *conn,
                 handled = 1;
             }
 
-            next = strstr(current, "\r\n");
-            if (next && !handled) {
-                logger_log(conn->raop->logger, LOGGER_WARNING,
-                           "Found an unknown parameter: %.*s", (next - current), current);
-                current = next + 2;
-            } else if (next) {
+            for (next = current ; (datalen - (next - data) > 0) ; ++next)
+                if (*next == '\r')
+                    break;
+
+            if ((datalen - (next - data) >= 2) && !strncmp(next, "\r\n", 2)) {
+                if ((next - current) > 0) {
+                    logger_log(conn->raop->logger, LOGGER_WARNING,
+                               "Found an unknown parameter: %.*s", (next - current), current);
+                }
                 current = next + 2;
             } else {
                 current = NULL;
@@ -524,11 +527,11 @@ raop_handler_set_parameter(raop_conn_t *conn,
         datastr = calloc(1, datalen+1);
         if (data && datastr && conn->raop_rtp) {
             memcpy(datastr, data, datalen);
-            if (!strncmp(datastr, "volume: ", 8)) {
+            if ((datalen >= 8) && !strncmp(datastr, "volume: ", 8)) {
                 float vol = 0.0;
                 sscanf(datastr+8, "%f", &vol);
                 raop_rtp_set_volume(conn->raop_rtp, vol);
-            } else if (!strncmp(datastr, "progress: ", 10)) {
+            } else if ((datalen >= 10) && !strncmp(datastr, "progress: ", 10)) {
                 unsigned int start, curr, end;
                 sscanf(datastr+10, "%u/%u/%u", &start, &curr, &end);
                 raop_rtp_set_progress(conn->raop_rtp, start, curr, end);
