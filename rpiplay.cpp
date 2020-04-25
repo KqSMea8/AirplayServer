@@ -53,6 +53,7 @@ static dnssd_t *dnssd = NULL;
 static raop_t *raop = NULL;
 static video_renderer_t *video_renderer = NULL;
 static audio_renderer_t *audio_renderer = NULL;
+static logger_t *render_logger = NULL;
 
 static void signal_handler(int sig) {
     switch (sig) {
@@ -249,7 +250,7 @@ int start_server(std::vector<char> hw_addr, std::string name, background_mode_t 
     raop_set_log_callback(raop, log_callback, NULL);
     raop_set_log_level(raop, debug_log ? RAOP_LOG_DEBUG : LOGGER_INFO);
 
-    logger_t *render_logger = logger_init();
+    render_logger = logger_init();
     logger_set_callback(render_logger, log_callback, NULL);
     logger_set_level(render_logger, debug_log ? LOGGER_DEBUG : LOGGER_INFO);
 
@@ -297,5 +298,6 @@ int stop_server() {
     // If we don't destroy these two in the correct order, we get a deadlock from the ilclient library
     audio_renderer_destroy(audio_renderer);
     video_renderer_destroy(video_renderer);
+    logger_destroy(render_logger);
     return 0;
 }
