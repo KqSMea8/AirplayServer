@@ -15,11 +15,11 @@
 /* This file should be only included from raop.c as it defines static handler
  * functions and depends on raop internals */
 
-#include "plist/plist/plist.h"
 #include "dnssdint.h"
 #include "utils.h"
 #include <ctype.h>
 #include <stdlib.h>
+#include <plist/plist.h>
 
 typedef void (*raop_handler_t)(raop_conn_t *, http_request_t *,
                                http_response_t *, char **, int *);

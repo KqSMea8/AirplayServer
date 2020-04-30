@@ -32,6 +32,7 @@ The following packages are required for building on Raspbian:
 
 * **cmake** (for the build system)
 * **libavahi-compat-libdnssd-dev** (for the bonjour registration)
+* **libplist-dev** (for plist handling)
 * **libssl-dev** (for crypto primitives)
 * **ilclient** and Broadcom's OpenMAX stack as present in `/opt/vc` in Raspbian.
 
@@ -45,6 +46,7 @@ For building on a fresh Raspbian Stretch or Buster install, these steps should b
 ```bash
 sudo apt-get install cmake
 sudo apt-get install libavahi-compat-libdnssd-dev
+sudo apt-get install libplist-dev
 sudo apt-get install libssl-dev
 mkdir build
 cd build
@@ -90,7 +92,6 @@ The code in this repository accumulated from various sources over time. Here is 
 * **dsafa22**: Created an [AirPlay 2 mirroring server](https://github.com/dsafa22/AirplayServer)(seems gone now) for Android based on ShairPlay. This project is basically a port of dsafa22's code to the Raspberry Pi, utilizing OpenMAX and OpenSSL for better performance on the Pi. All code in `lib/` concerning mirroring is dsafa22's work. License: GNU LGPLv2.1+
 * **Juho Vähä-Herttua** and contributors: Created an AirPlay audio server called [ShairPlay](https://github.com/juhovh/shairplay), including support for Fairplay based on PlayFair. Most of the code in `lib/` originally stems from this project. License: GNU LGPLv2.1+
 * **EstebanKubata**: Created a FairPlay library called [PlayFair](https://github.com/EstebanKubata/playfair). Located in the `lib/playfair` folder. License: GNU GPL
-* **Jonathan Beck, Nikias Bassen** and contributors: Created a library for plist handling called [libplist](https://github.com/libimobiledevice/libplist). Located in the `lib/plist` folder. License: GNU LGPLv2.1+
 * **Joyent, Inc and contributors**: Created an http library called [http-parser](https://github.com/nodejs/http-parser). Located at `lib/http_parser.(c|h)`. License: MIT
 * **Google, Inc and contributors**: Created an implementation of curve 25519 called [curve25519-donna](https://github.com/agl/curve25519-donna). Located in the `lib/curve25519` folder. License: 3-Clause BSD
 * **Team XBMC**: Managed to show a black background for OpenMAX video rendering. This code is used in the video renderer. License: GNU GPL
