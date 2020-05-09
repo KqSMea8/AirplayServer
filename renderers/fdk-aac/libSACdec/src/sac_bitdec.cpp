@@ -448,6 +448,7 @@ SACDEC_ERROR SpatialDecParseSpecificConfig(
   int bsFreqRes, b3DaudioMode = 0;
   int numHeaderBits;
   int cfgStartPos, bitsAvailable;
+  int treeConfig;
 
   FDKmemclear(pSpatialSpecificConfig, sizeof(SPATIAL_SPECIFIC_CONFIG));
 
@@ -488,13 +489,13 @@ SACDEC_ERROR SpatialDecParseSpecificConfig(
   pSpatialSpecificConfig->freqRes =
       (SPATIALDEC_FREQ_RES)freqResTable_LD[bsFreqRes];
 
-  pSpatialSpecificConfig->treeConfig =
-      (SPATIALDEC_TREE_CONFIG)FDKreadBits(bitstream, 4);
+  treeConfig = FDKreadBits(bitstream, 4);
 
-  if (pSpatialSpecificConfig->treeConfig != SPATIALDEC_MODE_RSVD7) {
+  if (treeConfig != SPATIALDEC_MODE_RSVD7) {
     err = MPS_UNSUPPORTED_CONFIG;
     goto bail;
   }
+  pSpatialSpecificConfig->treeConfig = (SPATIALDEC_TREE_CONFIG) treeConfig;
 
   {
     pSpatialSpecificConfig->nOttBoxes =
@@ -1457,7 +1458,7 @@ static SACDEC_ERROR mapIndexData(
     FIXP_DBL (*pOttVsTotDb1)[MAX_PARAMETER_SETS][MAX_PARAMETER_BANDS],
     FIXP_DBL (*pOttVsTotDb2)[MAX_PARAMETER_SETS][MAX_PARAMETER_BANDS]) {
   int aParamSlots[MAX_PARAMETER_SETS];
-  int aInterpolate[MAX_PARAMETER_SETS];
+  int aInterpolate[MAX_PARAMETER_SETS] = {0};
 
   int dataSets;
   int aMap[MAX_PARAMETER_BANDS + 1];
@@ -1562,6 +1563,7 @@ static SACDEC_ERROR mapIndexData(
     i2 = i;
     while (aInterpolate[i2] == 1) {
       i2++;
+      if (i2 >= MAX_PARAMETER_SETS) return MPS_WRONG_PARAMETERSETS;
     }
     x1 = paramSlot[i1];
     xi = paramSlot[i];
