@@ -412,8 +412,10 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
 
     int offset = 0;
     while (offset < data_len) {
-        OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
+        OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 0);
         if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!");
+        if (!buffer)
+            break;
 
         int chunk_size = MIN(data_len - offset, buffer->nAllocLen);
         memcpy(buffer->pBuffer, data + offset, chunk_size);
@@ -451,8 +453,10 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
 }
 
 void video_renderer_flush(video_renderer_t *renderer) {
-    OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
+    OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 0);
     if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer while flushing!");
+    if (!buffer)
+        return;
 
     buffer->nFilledLen = 0;
     buffer->nFlags = OMX_BUFFERFLAG_TIME_UNKNOWN | OMX_BUFFERFLAG_EOS;

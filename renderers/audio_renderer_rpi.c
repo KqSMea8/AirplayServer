@@ -311,7 +311,9 @@ void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, u
 
     int offset = 0;
     while (offset < time_data_size) {
-        OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->audio_renderer, 100, 1);
+        OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->audio_renderer, 100, 0);
+        if (!buffer)
+            break;
 
         int chunk_size = MIN(time_data_size - offset, buffer->nAllocLen);
         memcpy(buffer->pBuffer, p_time_data, chunk_size);
