@@ -332,6 +332,9 @@ void audio_renderer_render_buffer(audio_renderer_t *renderer, raop_ntp_t *ntp, u
         if (OMX_EmptyThisBuffer(ILC_GET_HANDLE(renderer->audio_renderer), buffer) != OMX_ErrorNone) {
             logger_log(renderer->logger, LOGGER_ERR, "Audio renderer refused processing buffer");
         }
+
+        int64_t audio_delay = ((int64_t) raop_ntp_get_local_time(ntp)) - ((int64_t) pts);
+        logger_log(renderer->logger, LOGGER_DEBUG, "Audio delay is %lld", audio_delay);
     }
 
     free(p_time_data);
