@@ -388,6 +388,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
             free(modified_data);
             modified_data = NULL;
         }
+        h264_free(h);
     }
 
     if (ilclient_remove_event(renderer->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {
