@@ -413,15 +413,15 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
 
     int offset = 0;
     while (offset < data_len) {
-        int64_t video_delay = ((int64_t) raop_ntp_get_local_time(ntp)) - ((int64_t) pts);
-        logger_log(renderer->logger, LOGGER_DEBUG, "Video delay is %lld", video_delay);
-        if (video_delay > 100000)
-            renderer->first_packet_time = 0;
-
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 0);
         if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!");
         if (!buffer)
             break;
+
+        int64_t video_delay = ((int64_t) raop_ntp_get_local_time(ntp)) - ((int64_t) pts);
+        logger_log(renderer->logger, LOGGER_DEBUG, "Video delay is %lld", video_delay);
+        if (video_delay > 100000)
+            renderer->first_packet_time = 0;
 
         int chunk_size = MIN(data_len - offset, buffer->nAllocLen);
         memcpy(buffer->pBuffer, data + offset, chunk_size);
@@ -457,7 +457,7 @@ void video_renderer_render_buffer(video_renderer_t *renderer, raop_ntp_t *ntp, u
 }
 
 void video_renderer_flush(video_renderer_t *renderer) {
-    OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 0);
+    OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(renderer->video_decoder, 130, 1);
     if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer while flushing!");
     if (!buffer)
         return;
