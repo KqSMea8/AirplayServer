@@ -454,7 +454,8 @@ static void video_renderer_rpi_render_buffer(video_renderer_t *renderer, raop_nt
         OMX_BUFFERHEADERTYPE *buffer = ilclient_get_input_buffer(r->video_decoder, 130, 0);
         if (buffer == NULL) logger_log(renderer->logger, LOGGER_ERR, "Got NULL buffer!");
         if (!buffer)
-            break;
+            exit(-1);
+            //break;
 
         int64_t video_delay = ((int64_t) raop_ntp_get_local_time(ntp)) - ((int64_t) pts);
         logger_log(renderer->logger, LOGGER_DEBUG, "Video delay is %lld", video_delay);
