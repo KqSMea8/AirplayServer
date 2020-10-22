@@ -2,8 +2,8 @@
 #define INCLUDE_LLHTTP_H_
 
 #define LLHTTP_VERSION_MAJOR 2
-#define LLHTTP_VERSION_MINOR 1
-#define LLHTTP_VERSION_PATCH 3
+#define LLHTTP_VERSION_MINOR 2
+#define LLHTTP_VERSION_PATCH 0
 
 #ifndef LLHTTP_STRICT_MODE
 # define LLHTTP_STRICT_MODE 0
@@ -288,7 +288,12 @@ struct llhttp_settings_s {
   llhttp_cb      on_chunk_complete;
 };
 
-/* Initialize the parser with specific type and user settings */
+/* Initialize the parser with specific type and user settings.
+ *
+ * NOTE: lifetime of `settings` has to be at least the same as the lifetime of
+ * the `parser` here. In practice, `settings` has to be either a static
+ * variable or be allocated with `malloc`, `new`, etc.
+ */
 void llhttp_init(llhttp_t* parser, llhttp_type_t type,
                  const llhttp_settings_t* settings);
 
