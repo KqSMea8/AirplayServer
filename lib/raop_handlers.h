@@ -480,7 +480,6 @@ raop_handler_get_parameter(raop_conn_t *conn,
 
         while (current && (datalen - (current - data) > 0)) {
             const char *next;
-            int handled = 0;
 
             /* This is a bit ugly, but seems to be how airport works too */
             if ((datalen - (current - data) >= 8) && !strncmp(current, "volume\r\n", 8)) {
@@ -491,7 +490,7 @@ raop_handler_get_parameter(raop_conn_t *conn,
                 if (*response_data) {
                     *response_datalen = strlen(*response_data);
                 }
-                handled = 1;
+                return;
             }
 
             for (next = current ; (datalen - (next - data) > 0) ; ++next)
