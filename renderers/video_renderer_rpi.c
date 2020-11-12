@@ -399,34 +399,34 @@ static void video_renderer_rpi_render_buffer(video_renderer_t *renderer, raop_nt
         // This reduces the Raspberry Pi H264 decode pipeline delay from about 11 to 6 frames for RPiPlay.
         // Described at https://www.raspberrypi.org/forums/viewtopic.php?t=41053
         logger_log(renderer->logger, LOGGER_DEBUG, "Injecting max_dec_frame_buffering");
-        modified_data = malloc(data_len * 2);
         int sps_start, sps_end;
-        h264_stream_t *h = h264_new();
         int sps_size = find_nal_unit(data, data_len, &sps_start, &sps_end);
-        int pps_size = data_len - 8 - sps_size;
         if (sps_size > 0) {
-            read_nal_unit(h, &data[sps_start], sps_size);
+            const int sps_wiggle_room = 12;
+            const unsigned char nal_marker[] = { 0x0, 0x0, 0x0, 0x1 };
+            int modified_data_len = data_len + sps_wiggle_room + sizeof(nal_marker);
+            modified_data = malloc(modified_data_len);
+
+            h264_stream_t *h = h264_new();
+            h->nal->nal_unit_type = NAL_UNIT_TYPE_SPS;
             h->sps->vui.bitstream_restriction_flag = 1;
-            h->sps->vui.max_dec_frame_buffering = 4; // It seems this is the lowest value that works for iOS and macOS
+            h->sps->vui.max_dec_frame_buffering = 4;
 
-            // Write the modified SPS NAL
-            int new_sps_size = write_nal_unit(h, modified_data + 3, data_len * 2) - 1;
-            modified_data[0] = 0;
-            modified_data[1] = 0;
-            modified_data[2] = 0;
-            modified_data[3] = 1;
-
-            // Copy the original PPS NAL
-            memcpy(modified_data + new_sps_size + 4, data + 4 + sps_size, pps_size + 4);
-
-            data = modified_data;
-            data_len = new_sps_size + pps_size + 8;
+            int new_sps_size = write_nal_unit(h, modified_data + sps_start, sps_wiggle_room);
+            if (new_sps_size > 0 && new_sps_size <= sps_wiggle_room) {
+                memcpy(modified_data, data, sps_start);
+                memcpy(modified_data + sps_start + new_sps_size, nal_marker, sizeof(nal_marker));
+                memcpy(modified_data + sps_start + new_sps_size + sizeof(nal_marker), data + sps_start, data_len - sps_start);
+                data = modified_data;
+                data_len = data_len + new_sps_size + sizeof(nal_marker);
+            } else {
+                free(modified_data);
+                modified_data = NULL;
+            }
+            h264_free(h);
         } else {
             logger_log(renderer->logger, LOGGER_ERR, "Could not find sps boundaries");
-            free(modified_data);
-            modified_data = NULL;
         }
-        h264_free(h);
     }
 
     if (ilclient_remove_event(r->video_decoder, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) {

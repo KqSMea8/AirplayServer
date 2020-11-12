@@ -1,7 +1,7 @@
 /* -----------------------------------------------------------------------------
 Software License for The Fraunhofer FDK AAC Codec Library for Android
 
-© Copyright  1995 - 2018 Fraunhofer-Gesellschaft zur Förderung der angewandten
+© Copyright  1995 - 2019 Fraunhofer-Gesellschaft zur Förderung der angewandten
 Forschung e.V. All rights reserved.
 
  1.    INTRODUCTION
@@ -123,7 +123,7 @@ void scaleValues(FIXP_DBL *dst, const FIXP_DBL *src, INT len, INT scalefactor);
 #if (SAMPLE_BITS == 16)
 void scaleValues(FIXP_PCM *dst, const FIXP_DBL *src, INT len, INT scalefactor);
 #endif
-void scaleValues(FIXP_PCM *dst, const FIXP_SGL *src, INT len, INT scalefactor);
+void scaleValues(FIXP_SGL *dst, const FIXP_SGL *src, INT len, INT scalefactor);
 void scaleCplxValues(FIXP_DBL *r_dst, FIXP_DBL *i_dst, const FIXP_DBL *r_src,
                      const FIXP_DBL *i_src, INT len, INT scalefactor);
 void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len,
@@ -241,20 +241,31 @@ inline void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
 
 #ifndef SATURATE_RIGHT_SHIFT
 #define SATURATE_RIGHT_SHIFT(src, scale, dBits)                            \
+  (((scale) >= 8*sizeof(LONG)) ? (LONG)0 :                                 \
   ((((LONG)(src) >> (scale)) > (LONG)(((1U) << ((dBits)-1)) - 1))          \
        ? (LONG)(((1U) << ((dBits)-1)) - 1)                                 \
        : (((LONG)(src) >> (scale)) < ~((LONG)(((1U) << ((dBits)-1)) - 1))) \
              ? ~((LONG)(((1U) << ((dBits)-1)) - 1))                        \
-             : ((LONG)(src) >> (scale)))
+             : ((LONG)(src) >> (scale))))
+#endif
+
+#ifndef SATURATE_LEFT_MAX
+#define SATURATE_LEFT_MAX(src, dBits)                 \
+  (((LONG)(src) > 0)                                  \
+       ? (LONG)(((1U) << ((dBits)-1)) - 1)            \
+       : ((LONG)(src) < 0)                            \
+             ? ~((LONG)(((1U) << ((dBits)-1)) - 1))   \
+             : (LONG)0)
 #endif
 
 #ifndef SATURATE_LEFT_SHIFT
 #define SATURATE_LEFT_SHIFT(src, scale, dBits)                           \
+  (((scale) >= 8*sizeof(LONG)) ? SATURATE_LEFT_MAX(src, dBits) :         \
   (((LONG)(src) > ((LONG)(((1U) << ((dBits)-1)) - 1) >> (scale)))        \
        ? (LONG)(((1U) << ((dBits)-1)) - 1)                               \
        : ((LONG)(src) < ~((LONG)(((1U) << ((dBits)-1)) - 1) >> (scale))) \
              ? ~((LONG)(((1U) << ((dBits)-1)) - 1))                      \
-             : ((LONG)(src) << (scale)))
+             : ((LONG)(src) << (scale))))
 #endif
 
 #ifndef SATURATE_SHIFT
