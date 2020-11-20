@@ -19,4 +19,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${RENDERER_FLAGS}" )
 add_executable( rpiplay rpiplay.cpp)
 target_link_libraries ( rpiplay renderers airplay )
 
-install(PROGRAMS rpiplay DESTINATION bin)
+install(TARGETS rpiplay RUNTIME DESTINATION bin)
