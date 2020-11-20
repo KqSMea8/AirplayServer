@@ -58,7 +58,9 @@ GCC 5 or later is required.
 
 # Building on desktop Linux:
 
-For building on Ubuntu 18.04 or 20.04, follow these steps:
+For building on desktop linux, follow these steps as per your distribution:
+
+## Ubuntu 18.04 or 20.04
 ```bash
 sudo apt-get install cmake libavahi-compat-libdnssd-dev libplist-dev libssl-dev \
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-libav \
@@ -69,7 +71,25 @@ cmake ..
 make
 ```
 
+## Fedora 33
+```bash
+sudo dnf install cmake avahi-compat-libdns_sd-devel libplist-devel openssl-devel \
+    gstreamer1-plugins-base-devel gstreamer1-libav gstreamer1-vaapi \
+    gstreamer1-plugins-bad-free
+mkdir build
+cd build
+cmake ..
+make
+```
+
 Note: The -b, -r, -l, and -a options are not supported with the gstreamer renderer.
+
+# Global installation
+
+After building, to install the executable on the system permanently (so it can be run from anywhere), simply run the following command:
+```bash
+sudo make install
+```
 
 # Usage
 
