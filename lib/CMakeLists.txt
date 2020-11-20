@@ -9,7 +9,7 @@ add_library( airplay
         ${DIR_SRCS}
         )
 
-find_library( LIBPLIST plist )
+find_library( LIBPLIST NAMES plist plist-2.0 )
 
 target_link_libraries( airplay
 	    pthread
