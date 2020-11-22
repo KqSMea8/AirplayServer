@@ -129,15 +129,13 @@ void scaleCplxValues(FIXP_DBL *r_dst, FIXP_DBL *i_dst, const FIXP_DBL *r_src,
 void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len,
                            INT scalefactor);
 void scaleValuesSaturate(FIXP_DBL *vector, INT len, INT scalefactor);
-void scaleValuesSaturate(FIXP_DBL *dst, FIXP_DBL *src, INT len,
+void scaleValuesSaturate(FIXP_DBL *dst, const FIXP_DBL *src, INT len,
                          INT scalefactor);
-void scaleValuesSaturate(FIXP_SGL *dst, FIXP_DBL *src, INT len,
+void scaleValuesSaturate(FIXP_SGL *dst, const FIXP_DBL *src, INT len,
                          INT scalefactor);
-void scaleValuesSaturate(INT_PCM *dst, FIXP_DBL *src, INT len, INT scalefactor);
 void scaleValuesSaturate(FIXP_SGL *vector, INT len, INT scalefactor);
-void scaleValuesSaturate(FIXP_SGL *dst, FIXP_SGL *src, INT len,
+void scaleValuesSaturate(FIXP_SGL *dst, const FIXP_SGL *src, INT len,
                          INT scalefactor);
-void scaleValuesSaturate(INT_PCM *dst, INT_PCM *src, INT len, INT scalefactor);
 INT getScalefactorShort(const SHORT *vector, INT len);
 INT getScalefactorPCM(const INT_PCM *vector, INT len, INT stride);
 INT getScalefactor(const FIXP_DBL *vector, INT len);
@@ -241,31 +239,20 @@ inline void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
 
 #ifndef SATURATE_RIGHT_SHIFT
 #define SATURATE_RIGHT_SHIFT(src, scale, dBits)                            \
-  (((scale) >= 8*sizeof(LONG)) ? (LONG)0 :                                 \
   ((((LONG)(src) >> (scale)) > (LONG)(((1U) << ((dBits)-1)) - 1))          \
        ? (LONG)(((1U) << ((dBits)-1)) - 1)                                 \
        : (((LONG)(src) >> (scale)) < ~((LONG)(((1U) << ((dBits)-1)) - 1))) \
              ? ~((LONG)(((1U) << ((dBits)-1)) - 1))                        \
-             : ((LONG)(src) >> (scale))))
-#endif
-
-#ifndef SATURATE_LEFT_MAX
-#define SATURATE_LEFT_MAX(src, dBits)                 \
-  (((LONG)(src) > 0)                                  \
-       ? (LONG)(((1U) << ((dBits)-1)) - 1)            \
-       : ((LONG)(src) < 0)                            \
-             ? ~((LONG)(((1U) << ((dBits)-1)) - 1))   \
-             : (LONG)0)
+             : ((LONG)(src) >> (scale)))
 #endif
 
 #ifndef SATURATE_LEFT_SHIFT
 #define SATURATE_LEFT_SHIFT(src, scale, dBits)                           \
-  (((scale) >= 8*sizeof(LONG)) ? SATURATE_LEFT_MAX(src, dBits) :         \
   (((LONG)(src) > ((LONG)(((1U) << ((dBits)-1)) - 1) >> (scale)))        \
        ? (LONG)(((1U) << ((dBits)-1)) - 1)                               \
        : ((LONG)(src) < ~((LONG)(((1U) << ((dBits)-1)) - 1) >> (scale))) \
              ? ~((LONG)(((1U) << ((dBits)-1)) - 1))                      \
-             : ((LONG)(src) << (scale))))
+             : ((LONG)(src) << (scale)))
 #endif
 
 #ifndef SATURATE_SHIFT
