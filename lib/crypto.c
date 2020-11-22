@@ -23,6 +23,7 @@
 #include <openssl/err.h>
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -38,11 +39,11 @@ uint8_t waste[AES_128_BLOCK_SIZE];
 
 // Common AES utilities
 
-void handle_error(const char* location) {
+void crypto_handle_error(const char* location) {
     long error = ERR_get_error();
     const char* error_str = ERR_error_string(error, NULL);
-    printf("Crypto error at %s: %s\n", location, error_str);
-    assert(false);
+    fprintf(stderr, "Crypto error at %s: %s\n", location, error_str);
+    exit(EXIT_FAILURE);
 }
 
 aes_ctx_t *aes_init(const uint8_t *key, const uint8_t *iv, const EVP_CIPHER *type, aes_direction_t direction) {
@@ -56,11 +57,11 @@ aes_ctx_t *aes_init(const uint8_t *key, const uint8_t *iv, const EVP_CIPHER *typ
 
     if (direction == AES_ENCRYPT) {
         if (!EVP_EncryptInit_ex(ctx->cipher_ctx, type, NULL, key, iv)) {
-            handle_error(__func__);
+            crypto_handle_error(__func__);
         }
     } else {
         if (!EVP_DecryptInit_ex(ctx->cipher_ctx, type, NULL, key, iv)) {
-            handle_error(__func__);
+            crypto_handle_error(__func__);
         }
     }
 
@@ -72,7 +73,7 @@ aes_ctx_t *aes_init(const uint8_t *key, const uint8_t *iv, const EVP_CIPHER *typ
 void aes_encrypt(aes_ctx_t *ctx, const uint8_t *in, uint8_t *out, int in_len) {
     int out_len = 0;
     if (!EVP_EncryptUpdate(ctx->cipher_ctx, out, &out_len, in, in_len)) {
-        handle_error(__func__);
+        crypto_handle_error(__func__);
     }
 
     assert(out_len <= in_len);
@@ -81,7 +82,7 @@ void aes_encrypt(aes_ctx_t *ctx, const uint8_t *in, uint8_t *out, int in_len) {
 void aes_decrypt(aes_ctx_t *ctx, const uint8_t *in, uint8_t *out, int in_len) {
     int out_len = 0;
     if (!EVP_DecryptUpdate(ctx->cipher_ctx, out, &out_len, in, in_len)) {
-        handle_error(__func__);
+        crypto_handle_error(__func__);
     }
 
     assert(out_len <= in_len);
@@ -96,16 +97,16 @@ void aes_destroy(aes_ctx_t *ctx) {
 
 void aes_reset(aes_ctx_t *ctx, const EVP_CIPHER *type, aes_direction_t direction) {
     if (!EVP_CIPHER_CTX_reset(ctx->cipher_ctx)) {
-        handle_error(__func__);
+        crypto_handle_error(__func__);
     }
 
     if (direction == AES_ENCRYPT) {
         if (!EVP_EncryptInit_ex(ctx->cipher_ctx, type, NULL, ctx->key, ctx->iv)) {
-            handle_error(__func__);
+            crypto_handle_error(__func__);
         }
     } else {
         if (!EVP_DecryptInit_ex(ctx->cipher_ctx, type, NULL, ctx->key, ctx->iv)) {
-            handle_error(__func__);
+            crypto_handle_error(__func__);
         }
     }
 }
@@ -176,20 +177,20 @@ sha_ctx_t *sha_init() {
     assert(ctx->digest_ctx != NULL);
 
     if (!EVP_DigestInit_ex(ctx->digest_ctx, EVP_sha512(), NULL)) {
-        handle_error(__func__);
+        crypto_handle_error(__func__);
     }
     return ctx;
 }
 
 void sha_update(sha_ctx_t *ctx, const uint8_t *in, int len) {
     if (!EVP_DigestUpdate(ctx->digest_ctx, in, len)) {
-        handle_error(__func__);
+        crypto_handle_error(__func__);
     }
 }
 
 void sha_final(sha_ctx_t *ctx, uint8_t *out, unsigned int *len) {
     if (!EVP_DigestFinal_ex(ctx->digest_ctx, out, len)) {
-        handle_error(__func__);
+        crypto_handle_error(__func__);
     }
 }
 
@@ -197,7 +198,7 @@ void sha_reset(sha_ctx_t *ctx) {
     if (!EVP_MD_CTX_reset(ctx->digest_ctx) ||
         !EVP_DigestInit_ex(ctx->digest_ctx, EVP_sha512(), NULL)) {
 
-        handle_error(__func__);
+        crypto_handle_error(__func__);
     }
 }
 

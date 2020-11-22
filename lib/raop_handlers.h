@@ -169,7 +169,7 @@ raop_handler_pairsetup(raop_conn_t *conn,
                        http_request_t *request, http_response_t *response,
                        char **response_data, int *response_datalen)
 {
-    unsigned char public_key[32];
+    unsigned char public_key[X25519_KEY_SIZE];
     const char *data;
     int datalen;
 
@@ -179,7 +179,9 @@ raop_handler_pairsetup(raop_conn_t *conn,
         return;
     }
 
-    pairing_get_public_key(conn->raop->pairing, public_key);
+    if (pairing_get_public_key(conn->raop->pairing, public_key)) {
+        logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ED public key");
+    }
     pairing_session_set_setup_status(conn->pairing);
 
     *response_data = malloc(sizeof(public_key));
@@ -198,8 +200,8 @@ raop_handler_pairverify(raop_conn_t *conn,
     if (pairing_session_check_handshake_status(conn->pairing)) {
         return;
     }
-    unsigned char public_key[32];
-    unsigned char signature[64];
+    unsigned char public_key[X25519_KEY_SIZE];
+    unsigned char signature[PAIRING_SIG_SIZE];
     const unsigned char *data;
     int datalen;
 
@@ -210,12 +212,12 @@ raop_handler_pairverify(raop_conn_t *conn,
     }
     switch (data[0]) {
         case 1:
-            if (datalen != 4 + 32 + 32) {
+            if (datalen != 4 + X25519_KEY_SIZE + X25519_KEY_SIZE) {
                 logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
                 return;
             }
             /* We can fall through these errors, the result will just be garbage... */
-            if (pairing_session_handshake(conn->pairing, data + 4, data + 4 + 32)) {
+            if (pairing_session_handshake(conn->pairing, data + 4, data + 4 + X25519_KEY_SIZE)) {
                 logger_log(conn->raop->logger, LOGGER_ERR, "Error initializing pair-verify handshake");
             }
             if (pairing_session_get_public_key(conn->pairing, public_key)) {
@@ -233,7 +235,7 @@ raop_handler_pairverify(raop_conn_t *conn,
             }
             break;
         case 0:
-            if (datalen != 4 + 64) {
+            if (datalen != 4 + PAIRING_SIG_SIZE) {
                 logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
                 return;
             }
@@ -363,7 +365,7 @@ raop_handler_setup(raop_conn_t *conn,
         // ekey is 72 bytes, aeskey is 16 bytes
         int ret = fairplay_decrypt(conn->fairplay, (unsigned char*) ekey, aeskey);
         logger_log(conn->raop->logger, LOGGER_DEBUG, "fairplay_decrypt ret = %d", ret);
-        unsigned char ecdh_secret[32];
+        unsigned char ecdh_secret[X25519_KEY_SIZE];
         pairing_get_ecdh_secret_key(conn->pairing, ecdh_secret);
 
         // Time port

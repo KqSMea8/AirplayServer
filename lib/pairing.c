@@ -12,21 +12,21 @@
  *  Lesser General Public License for more details.
  */
 
+#include <openssl/evp.h>
+#include <openssl/sha.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
 #include "pairing.h"
-#include "curve25519/curve25519.h"
-#include "ed25519/ed25519.h"
 #include "crypto.h"
 
 #define SALT_KEY "Pair-Verify-AES-Key"
 #define SALT_IV "Pair-Verify-AES-IV"
 
 struct pairing_s {
-    unsigned char ed_private[64];
-    unsigned char ed_public[32];
+    EVP_PKEY *ed;
 };
 
 typedef enum {
@@ -39,19 +39,21 @@ typedef enum {
 struct pairing_session_s {
     status_t status;
 
-    unsigned char ed_private[64];
-    unsigned char ed_ours[32];
-    unsigned char ed_theirs[32];
+    EVP_PKEY_CTX *pkey_ctx;
+    EVP_MD_CTX *md_ctx;
 
-    unsigned char ecdh_ours[32];
-    unsigned char ecdh_theirs[32];
-    unsigned char ecdh_secret[32];
+    EVP_PKEY *ed_ours;
+    EVP_PKEY *ed_theirs;
+
+    EVP_PKEY *ecdh_ours;
+    EVP_PKEY *ecdh_theirs;
+    unsigned char ecdh_secret[X25519_KEY_SIZE];
 };
 
 static int
 derive_key_internal(pairing_session_t *session, const unsigned char *salt, unsigned int saltlen, unsigned char *key, unsigned int keylen)
 {
-    unsigned char hash[64];
+    unsigned char hash[SHA512_DIGEST_LENGTH];
 
     if (keylen > sizeof(hash)) {
         return -1;
@@ -59,7 +61,7 @@ derive_key_internal(pairing_session_t *session, const unsigned char *salt, unsig
 
     sha_ctx_t *ctx = sha_init();
     sha_update(ctx, salt, saltlen);
-    sha_update(ctx, session->ecdh_secret, 32);
+    sha_update(ctx, session->ecdh_secret, X25519_KEY_SIZE);
     sha_final(ctx, hash, NULL);
     sha_destroy(ctx);
 
@@ -70,41 +72,48 @@ derive_key_internal(pairing_session_t *session, const unsigned char *salt, unsig
 pairing_t *
 pairing_init_generate()
 {
-    unsigned char seed[32];
-
-    if (ed25519_create_seed(seed)) {
-        return NULL;
-    }
-    return pairing_init_seed(seed);
-}
-
-pairing_t *
-pairing_init_seed(const unsigned char seed[32])
-{
     pairing_t *pairing;
+    EVP_PKEY_CTX *pctx;
 
     pairing = calloc(1, sizeof(pairing_t));
     if (!pairing) {
         return NULL;
     }
 
-    ed25519_create_keypair(pairing->ed_public, pairing->ed_private, seed);
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
+    if (!pctx) {
+        crypto_handle_error(__func__);
+    }
+
+    if (!EVP_PKEY_keygen_init(pctx)) {
+        crypto_handle_error(__func__);
+    }
+    if (!EVP_PKEY_keygen(pctx, &pairing->ed)) {
+        crypto_handle_error(__func__);
+    }
+
+    EVP_PKEY_CTX_free(pctx);
+
     return pairing;
 }
 
-void
-pairing_get_public_key(pairing_t *pairing, unsigned char public_key[32])
+int
+pairing_get_public_key(pairing_t *pairing, unsigned char public_key[X25519_KEY_SIZE])
 {
     assert(pairing);
 
-    memcpy(public_key, pairing->ed_public, 32);
+    if (!EVP_PKEY_get_raw_public_key(pairing->ed, public_key, &(size_t) {X25519_KEY_SIZE})) {
+        crypto_handle_error(__func__);
+    }
+
+    return 0;
 }
 
 void
-pairing_get_ecdh_secret_key(pairing_session_t *session, unsigned char ecdh_secret[32])
+pairing_get_ecdh_secret_key(pairing_session_t *session, unsigned char ecdh_secret[X25519_KEY_SIZE])
 {
     assert(session);
-    memcpy(ecdh_secret, session->ecdh_secret, 32);
+    memcpy(ecdh_secret, session->ecdh_secret, X25519_KEY_SIZE);
 }
 
 
@@ -121,8 +130,25 @@ pairing_session_init(pairing_t *pairing)
     if (!session) {
         return NULL;
     }
-    memcpy(session->ed_private, pairing->ed_private, 64);
-    memcpy(session->ed_ours, pairing->ed_public, 32);
+
+    session->pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, NULL);
+    if (!session->pkey_ctx) {
+        crypto_handle_error(__func__);
+    }
+    if (!EVP_PKEY_keygen_init(session->pkey_ctx)) {
+        crypto_handle_error(__func__);
+    }
+
+    session->md_ctx = EVP_MD_CTX_new();
+    if (!session->md_ctx) {
+        crypto_handle_error(__func__);
+    }
+
+    session->ed_ours = pairing->ed;
+    if (!EVP_PKEY_up_ref(pairing->ed)) {
+        crypto_handle_error(__func__);
+    }
+
     session->status = STATUS_INITIAL;
 
     return session;
@@ -146,30 +172,52 @@ pairing_session_check_handshake_status(pairing_session_t *session)
 }
 
 int
-pairing_session_handshake(pairing_session_t *session, const unsigned char ecdh_key[32], const unsigned char ed_key[32])
+pairing_session_handshake(pairing_session_t *session, const unsigned char ecdh_key[X25519_KEY_SIZE],
+                          const unsigned char ed_key[X25519_KEY_SIZE])
 {
-    unsigned char ecdh_priv[32];
+    EVP_PKEY_CTX *shared_ctx;
 
     assert(session);
 
     if (session->status == STATUS_FINISHED) {
         return -1;
     }
-    if (ed25519_create_seed(ecdh_priv)) {
-        return -2;
+
+    session->ecdh_theirs = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, ecdh_key, X25519_KEY_SIZE);
+    if (!session->ecdh_theirs) {
+        crypto_handle_error(__func__);
     }
 
-    memcpy(session->ecdh_theirs, ecdh_key, 32);
-    memcpy(session->ed_theirs, ed_key, 32);
-    curve25519_donna(session->ecdh_ours, ecdh_priv, kCurve25519BasePoint);
-    curve25519_donna(session->ecdh_secret, ecdh_priv, session->ecdh_theirs);
+    session->ed_theirs = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, ed_key, X25519_KEY_SIZE);
+    if (!session->ed_theirs) {
+        crypto_handle_error(__func__);
+    }
+
+    if (!EVP_PKEY_keygen(session->pkey_ctx, &session->ecdh_ours)) {
+        crypto_handle_error(__func__);
+    }
+
+    shared_ctx = EVP_PKEY_CTX_new(session->ecdh_ours, NULL);
+    if (!shared_ctx) {
+        return -2;
+    }
+    if (!EVP_PKEY_derive_init(shared_ctx)) {
+        crypto_handle_error(__func__);
+    }
+    if (!EVP_PKEY_derive_set_peer(shared_ctx, session->ecdh_theirs)) {
+        crypto_handle_error(__func__);
+    }
+    if (!EVP_PKEY_derive(shared_ctx, session->ecdh_secret, &(size_t) {X25519_KEY_SIZE})) {
+        crypto_handle_error(__func__);
+    }
+    EVP_PKEY_CTX_free(shared_ctx);
 
     session->status = STATUS_HANDSHAKE;
     return 0;
 }
 
 int
-pairing_session_get_public_key(pairing_session_t *session, unsigned char ecdh_key[32])
+pairing_session_get_public_key(pairing_session_t *session, unsigned char ecdh_key[X25519_KEY_SIZE])
 {
     assert(session);
 
@@ -177,16 +225,19 @@ pairing_session_get_public_key(pairing_session_t *session, unsigned char ecdh_ke
         return -1;
     }
 
-    memcpy(ecdh_key, session->ecdh_ours, 32);
+    if (!EVP_PKEY_get_raw_public_key(session->ecdh_ours, ecdh_key, &(size_t) {X25519_KEY_SIZE})) {
+        crypto_handle_error(__func__);
+    }
+
     return 0;
 }
 
 int
-pairing_session_get_signature(pairing_session_t *session, unsigned char signature[64])
+pairing_session_get_signature(pairing_session_t *session, unsigned char signature[PAIRING_SIG_SIZE])
 {
-    unsigned char sig_msg[64];
-    unsigned char key[16];
-    unsigned char iv[16];
+    unsigned char sig_msg[PAIRING_SIG_SIZE];
+    unsigned char key[AES_128_BLOCK_SIZE];
+    unsigned char iv[AES_128_BLOCK_SIZE];
     aes_ctx_t *aes_ctx;
 
     assert(session);
@@ -196,29 +247,38 @@ pairing_session_get_signature(pairing_session_t *session, unsigned char signatur
     }
 
     /* First sign the public ECDH keys of both parties */
-    memcpy(&sig_msg[0], session->ecdh_ours, 32);
-    memcpy(&sig_msg[32], session->ecdh_theirs, 32);
+    if (!EVP_PKEY_get_raw_public_key(session->ecdh_ours, sig_msg, &(size_t) {X25519_KEY_SIZE})) {
+        crypto_handle_error(__func__);
+    }
+    if (!EVP_PKEY_get_raw_public_key(session->ecdh_theirs, sig_msg + X25519_KEY_SIZE, &(size_t) {X25519_KEY_SIZE})) {
+        crypto_handle_error(__func__);
+    }
 
-    ed25519_sign(signature, sig_msg, sizeof(sig_msg), session->ed_ours, session->ed_private);
+    if (!EVP_DigestSignInit(session->md_ctx, NULL, NULL, NULL, session->ed_ours)) {
+        crypto_handle_error(__func__);
+    }
+    if (!EVP_DigestSign(session->md_ctx, signature, &(size_t) {PAIRING_SIG_SIZE}, sig_msg, PAIRING_SIG_SIZE)) {
+        crypto_handle_error(__func__);
+    }
 
     /* Then encrypt the result with keys derived from the shared secret */
     derive_key_internal(session, (const unsigned char *) SALT_KEY, strlen(SALT_KEY), key, sizeof(key));
-    derive_key_internal(session, (const unsigned char *) SALT_IV, strlen(SALT_IV), iv, sizeof(key));
+    derive_key_internal(session, (const unsigned char *) SALT_IV, strlen(SALT_IV), iv, sizeof(iv));
 
     aes_ctx = aes_ctr_init(key, iv);
-    aes_ctr_encrypt(aes_ctx, signature, signature, 64);
+    aes_ctr_encrypt(aes_ctx, signature, signature, PAIRING_SIG_SIZE);
     aes_ctr_destroy(aes_ctx);
 
     return 0;
 }
 
 int
-pairing_session_finish(pairing_session_t *session, const unsigned char signature[64])
+pairing_session_finish(pairing_session_t *session, const unsigned char signature[PAIRING_SIG_SIZE])
 {
-    unsigned char sig_buffer[64];
-    unsigned char sig_msg[64];
-    unsigned char key[16];
-    unsigned char iv[16];
+    unsigned char sig_buffer[PAIRING_SIG_SIZE];
+    unsigned char sig_msg[PAIRING_SIG_SIZE];
+    unsigned char key[AES_128_BLOCK_SIZE];
+    unsigned char iv[AES_128_BLOCK_SIZE];
     aes_ctx_t *aes_ctx;
 
     assert(session);
@@ -229,19 +289,31 @@ pairing_session_finish(pairing_session_t *session, const unsigned char signature
 
     /* First decrypt the signature with keys derived from the shared secret */
     derive_key_internal(session, (const unsigned char *) SALT_KEY, strlen(SALT_KEY), key, sizeof(key));
-    derive_key_internal(session, (const unsigned char *) SALT_IV, strlen(SALT_IV), iv, sizeof(key));
+    derive_key_internal(session, (const unsigned char *) SALT_IV, strlen(SALT_IV), iv, sizeof(iv));
 
     aes_ctx = aes_ctr_init(key, iv);
     /* One fake round for the initial handshake encryption */
-    aes_ctr_encrypt(aes_ctx, sig_buffer, sig_buffer, 64);
-    aes_ctr_encrypt(aes_ctx, signature, sig_buffer, 64);
+    aes_ctr_encrypt(aes_ctx, sig_buffer, sig_buffer, PAIRING_SIG_SIZE);
+    aes_ctr_encrypt(aes_ctx, signature, sig_buffer, PAIRING_SIG_SIZE);
     aes_ctr_destroy(aes_ctx);
 
     /* Then verify the signature with public ECDH keys of both parties */
-    memcpy(&sig_msg[0], session->ecdh_theirs, 32);
-    memcpy(&sig_msg[32], session->ecdh_ours, 32);
-    if (!ed25519_verify(sig_buffer, sig_msg, sizeof(sig_msg), session->ed_theirs)) {
+    if (!EVP_PKEY_get_raw_public_key(session->ecdh_theirs, sig_msg, &(size_t) {X25519_KEY_SIZE})) {
+        crypto_handle_error(__func__);
+    }
+    if (!EVP_PKEY_get_raw_public_key(session->ecdh_ours, sig_msg + X25519_KEY_SIZE, &(size_t) {X25519_KEY_SIZE})) {
+        crypto_handle_error(__func__);
+    }
+
+    if (!EVP_DigestVerifyInit(session->md_ctx, NULL, NULL, NULL, session->ed_theirs)) {
+        crypto_handle_error(__func__);
+    }
+
+    int ret = EVP_DigestVerify(session->md_ctx, sig_buffer, PAIRING_SIG_SIZE, sig_msg, PAIRING_SIG_SIZE);
+    if (ret == 0) {
         return -2;
+    } else if (ret < 0) {
+        crypto_handle_error(__func__);
     }
 
     session->status = STATUS_FINISHED;
@@ -251,11 +323,25 @@ pairing_session_finish(pairing_session_t *session, const unsigned char signature
 void
 pairing_session_destroy(pairing_session_t *session)
 {
-    free(session);
+    if (session) {
+        EVP_PKEY_free(session->ed_ours);
+        EVP_PKEY_free(session->ed_theirs);
+
+        EVP_PKEY_free(session->ecdh_ours);
+        EVP_PKEY_free(session->ecdh_theirs);
+
+        EVP_MD_CTX_free(session->md_ctx);
+        EVP_PKEY_CTX_free(session->pkey_ctx);
+
+        free(session);
+    }
 }
 
 void
 pairing_destroy(pairing_t *pairing)
 {
-    free(pairing);
+    if (pairing) {
+        EVP_PKEY_free(pairing->ed);
+        free(pairing);
+    }
 }
