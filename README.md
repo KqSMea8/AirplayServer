@@ -134,9 +134,7 @@ The code in this repository accumulated from various sources over time. Here is 
 * **Juho Vähä-Herttua** and contributors: Created an AirPlay audio server called [ShairPlay](https://github.com/juhovh/shairplay), including support for Fairplay based on PlayFair. Most of the code in `lib/` originally stems from this project. License: GNU LGPLv2.1+
 * **EstebanKubata**: Created a FairPlay library called [PlayFair](https://github.com/EstebanKubata/playfair). Located in the `lib/playfair` folder. License: GNU GPL
 * **Joyent, Inc and contributors**: Created an http library called [llhttp](https://github.com/nodejs/llhttp). Located at `lib/llhttp/`. License: MIT
-* **Google, Inc and contributors**: Created an implementation of curve 25519 called [curve25519-donna](https://github.com/agl/curve25519-donna). Located in the `lib/curve25519` folder. License: 3-Clause BSD
 * **Team XBMC**: Managed to show a black background for OpenMAX video rendering. This code is used in the video renderer. License: GNU GPL
-* **Orson Peters and contributors**: An implementation of [Ed25519](https://github.com/orlp/ed25519) signatures. Located in `lib/ed25519`, License: ZLIB; Depends on LibTomCrypt, License: Public Domain
 * **Alex Izvorski and contributors**: Wrote [h264bitstream](https://github.com/aizvorski/h264bitstream), a library for manipulation h264 streams. Used for reducing delay in the Raspberry Pi video pipeline. Located in the `renderers/h264-bitstream` folder. License: GNU LGPLv2.1
 
 
@@ -149,7 +147,6 @@ Your contributions are more than welcome!
 
 # Todo
 
-* Use OpenSSL for the elliptic curve crypto?
 * Bug: Sometimes cannot be stopped?
 
 # Changelog

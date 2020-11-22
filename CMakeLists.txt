@@ -6,8 +6,6 @@ set (CMAKE_CXX_STANDARD 11)
 
 set (RENDERER_FLAGS "")
 
-add_subdirectory(lib/curve25519)
-add_subdirectory(lib/ed25519)
 add_subdirectory(lib/playfair)
 add_subdirectory(lib/llhttp)
 add_subdirectory(lib)
