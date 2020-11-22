@@ -169,7 +169,7 @@ raop_handler_pairsetup(raop_conn_t *conn,
                        http_request_t *request, http_response_t *response,
                        char **response_data, int *response_datalen)
 {
-    unsigned char public_key[X25519_KEY_SIZE];
+    unsigned char public_key[ED25519_KEY_SIZE];
     const char *data;
     int datalen;
 
@@ -179,9 +179,7 @@ raop_handler_pairsetup(raop_conn_t *conn,
         return;
     }
 
-    if (pairing_get_public_key(conn->raop->pairing, public_key)) {
-        logger_log(conn->raop->logger, LOGGER_ERR, "Error getting ED public key");
-    }
+    pairing_get_public_key(conn->raop->pairing, public_key);
     pairing_session_set_setup_status(conn->pairing);
 
     *response_data = malloc(sizeof(public_key));

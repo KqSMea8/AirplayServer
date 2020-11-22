@@ -1,6 +1,7 @@
 /**
  * RPiPlay - An open-source AirPlay mirroring server for Raspberry Pi
  * Copyright (C) 2019 Florian Draschbacher
+ * Copyright (C) 2020 Jaslo Ziska
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +40,7 @@ uint8_t waste[AES_128_BLOCK_SIZE];
 
 // Common AES utilities
 
-void crypto_handle_error(const char* location) {
+void handle_error(const char* location) {
     long error = ERR_get_error();
     const char* error_str = ERR_error_string(error, NULL);
     fprintf(stderr, "Crypto error at %s: %s\n", location, error_str);
@@ -57,11 +58,11 @@ aes_ctx_t *aes_init(const uint8_t *key, const uint8_t *iv, const EVP_CIPHER *typ
 
     if (direction == AES_ENCRYPT) {
         if (!EVP_EncryptInit_ex(ctx->cipher_ctx, type, NULL, key, iv)) {
-            crypto_handle_error(__func__);
+            handle_error(__func__);
         }
     } else {
         if (!EVP_DecryptInit_ex(ctx->cipher_ctx, type, NULL, key, iv)) {
-            crypto_handle_error(__func__);
+            handle_error(__func__);
         }
     }
 
@@ -73,7 +74,7 @@ aes_ctx_t *aes_init(const uint8_t *key, const uint8_t *iv, const EVP_CIPHER *typ
 void aes_encrypt(aes_ctx_t *ctx, const uint8_t *in, uint8_t *out, int in_len) {
     int out_len = 0;
     if (!EVP_EncryptUpdate(ctx->cipher_ctx, out, &out_len, in, in_len)) {
-        crypto_handle_error(__func__);
+        handle_error(__func__);
     }
 
     assert(out_len <= in_len);
@@ -82,7 +83,7 @@ void aes_encrypt(aes_ctx_t *ctx, const uint8_t *in, uint8_t *out, int in_len) {
 void aes_decrypt(aes_ctx_t *ctx, const uint8_t *in, uint8_t *out, int in_len) {
     int out_len = 0;
     if (!EVP_DecryptUpdate(ctx->cipher_ctx, out, &out_len, in, in_len)) {
-        crypto_handle_error(__func__);
+        handle_error(__func__);
     }
 
     assert(out_len <= in_len);
@@ -97,16 +98,16 @@ void aes_destroy(aes_ctx_t *ctx) {
 
 void aes_reset(aes_ctx_t *ctx, const EVP_CIPHER *type, aes_direction_t direction) {
     if (!EVP_CIPHER_CTX_reset(ctx->cipher_ctx)) {
-        crypto_handle_error(__func__);
+        handle_error(__func__);
     }
 
     if (direction == AES_ENCRYPT) {
         if (!EVP_EncryptInit_ex(ctx->cipher_ctx, type, NULL, ctx->key, ctx->iv)) {
-            crypto_handle_error(__func__);
+            handle_error(__func__);
         }
     } else {
         if (!EVP_DecryptInit_ex(ctx->cipher_ctx, type, NULL, ctx->key, ctx->iv)) {
-            crypto_handle_error(__func__);
+            handle_error(__func__);
         }
     }
 }
@@ -164,6 +165,202 @@ void aes_cbc_destroy(aes_ctx_t *ctx) {
     aes_destroy(ctx);
 }
 
+// X25519
+
+struct x25519_key_s {
+    EVP_PKEY *pkey;
+};
+
+x25519_key_t *x25519_key_generate(void) {
+    x25519_key_t *key;
+    EVP_PKEY_CTX *pctx;
+
+    key = calloc(1, sizeof(x25519_key_t));
+    assert(key);
+
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, NULL);
+    if (!pctx) {
+        handle_error(__func__);
+    }
+    if (!EVP_PKEY_keygen_init(pctx)) {
+        handle_error(__func__);
+    }
+    if (!EVP_PKEY_keygen(pctx, &key->pkey)) {
+        handle_error(__func__);
+    }
+    EVP_PKEY_CTX_free(pctx);
+
+    return key;
+}
+
+x25519_key_t *x25519_key_from_raw(const unsigned char data[X25519_KEY_SIZE]) {
+    x25519_key_t *key;
+
+    key = malloc(sizeof(x25519_key_t));
+    assert(key);
+
+    key->pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, data, X25519_KEY_SIZE);
+    if (!key->pkey) {
+        handle_error(__func__);
+    }
+
+    return key;
+}
+
+void x25519_key_get_raw(unsigned char data[X25519_KEY_SIZE], const x25519_key_t *key) {
+    assert(key);
+    if (!EVP_PKEY_get_raw_public_key(key->pkey, data, &(size_t) {X25519_KEY_SIZE})) {
+        handle_error(__func__);
+    }
+}
+
+void x25519_key_destroy(x25519_key_t *key) {
+    if (key) {
+        EVP_PKEY_free(key->pkey);
+        free(key);
+    }
+}
+
+void x25519_derive_secret(unsigned char secret[X25519_KEY_SIZE], const x25519_key_t *ours, const x25519_key_t *theirs) {
+    EVP_PKEY_CTX *pctx;
+
+    assert(ours);
+    assert(theirs);
+
+    pctx = EVP_PKEY_CTX_new(ours->pkey, NULL);
+    if (!pctx) {
+        handle_error(__func__);
+    }
+    if (!EVP_PKEY_derive_init(pctx)) {
+        handle_error(__func__);
+    }
+    if (!EVP_PKEY_derive_set_peer(pctx, theirs->pkey)) {
+        handle_error(__func__);
+    }
+    if (!EVP_PKEY_derive(pctx, secret, &(size_t) {X25519_KEY_SIZE})) {
+        handle_error(__func__);
+    }
+    EVP_PKEY_CTX_free(pctx);
+}
+
+// ED25519
+
+struct ed25519_key_s {
+    EVP_PKEY *pkey;
+};
+
+ed25519_key_t *ed25519_key_generate(void) {
+    ed25519_key_t *key;
+    EVP_PKEY_CTX *pctx;
+
+    key = calloc(1, sizeof(ed25519_key_t));
+    assert(key);
+
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
+    if (!pctx) {
+        handle_error(__func__);
+    }
+    if (!EVP_PKEY_keygen_init(pctx)) {
+        handle_error(__func__);
+    }
+    if (!EVP_PKEY_keygen(pctx, &key->pkey)) {
+        handle_error(__func__);
+    }
+    EVP_PKEY_CTX_free(pctx);
+
+    return key;
+}
+
+ed25519_key_t *ed25519_key_from_raw(const unsigned char data[ED25519_KEY_SIZE]) {
+    ed25519_key_t *key;
+
+    key = malloc(sizeof(ed25519_key_t));
+    assert(key);
+
+    key->pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, data, ED25519_KEY_SIZE);
+    if (!key->pkey) {
+        handle_error(__func__);
+    }
+
+    return key;
+}
+
+void ed25519_key_get_raw(unsigned char data[ED25519_KEY_SIZE], const ed25519_key_t *key) {
+    assert(key);
+    if (!EVP_PKEY_get_raw_public_key(key->pkey, data, &(size_t) {ED25519_KEY_SIZE})) {
+        handle_error(__func__);
+    }
+}
+
+ed25519_key_t *ed25519_key_copy(const ed25519_key_t *key) {
+    ed25519_key_t *new_key;
+
+    assert(key);
+
+    new_key = malloc(sizeof(ed25519_key_t));
+    assert(new_key);
+
+    new_key->pkey = key->pkey;
+    if (!EVP_PKEY_up_ref(key->pkey)) {
+        handle_error(__func__);
+    }
+
+    return new_key;
+}
+
+void ed25519_sign(unsigned char *signature, size_t signature_len,
+                  const unsigned char *data, size_t data_len,
+                  const ed25519_key_t *key)
+{
+    EVP_MD_CTX *mctx;
+
+    mctx = EVP_MD_CTX_new();
+    if (!mctx) {
+        handle_error(__func__);
+    }
+
+    if (!EVP_DigestSignInit(mctx, NULL, NULL, NULL, key->pkey)) {
+        handle_error(__func__);
+    }
+    if (!EVP_DigestSign(mctx, signature, &signature_len, data, data_len)) {
+        handle_error(__func__);
+    }
+
+    EVP_MD_CTX_free(mctx);
+}
+
+int ed25519_verify(const unsigned char *signature, size_t signature_len,
+                   const unsigned char *data, size_t data_len,
+                   const ed25519_key_t *key)
+{
+    EVP_MD_CTX *mctx;
+
+    mctx = EVP_MD_CTX_new();
+    if (!mctx) {
+        handle_error(__func__);
+    }
+
+    if (!EVP_DigestVerifyInit(mctx, NULL, NULL, NULL, key->pkey)) {
+        handle_error(__func__);
+    }
+
+    int ret = EVP_DigestVerify(mctx, signature, signature_len, data, data_len);
+    if (ret < 0) {
+        handle_error(__func__);
+    }
+
+    EVP_MD_CTX_free(mctx);
+
+    return ret;
+}
+
+void ed25519_key_destroy(ed25519_key_t *key) {
+    if (key) {
+        EVP_PKEY_free(key->pkey);
+        free(key);
+    }
+}
+
 // SHA 512
 
 struct sha_ctx_s {
@@ -177,20 +374,20 @@ sha_ctx_t *sha_init() {
     assert(ctx->digest_ctx != NULL);
 
     if (!EVP_DigestInit_ex(ctx->digest_ctx, EVP_sha512(), NULL)) {
-        crypto_handle_error(__func__);
+        handle_error(__func__);
     }
     return ctx;
 }
 
 void sha_update(sha_ctx_t *ctx, const uint8_t *in, int len) {
     if (!EVP_DigestUpdate(ctx->digest_ctx, in, len)) {
-        crypto_handle_error(__func__);
+        handle_error(__func__);
     }
 }
 
 void sha_final(sha_ctx_t *ctx, uint8_t *out, unsigned int *len) {
     if (!EVP_DigestFinal_ex(ctx->digest_ctx, out, len)) {
-        crypto_handle_error(__func__);
+        handle_error(__func__);
     }
 }
 
@@ -198,7 +395,7 @@ void sha_reset(sha_ctx_t *ctx) {
     if (!EVP_MD_CTX_reset(ctx->digest_ctx) ||
         !EVP_DigestInit_ex(ctx->digest_ctx, EVP_sha512(), NULL)) {
 
-        crypto_handle_error(__func__);
+        handle_error(__func__);
     }
 }
 
