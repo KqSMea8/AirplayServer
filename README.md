@@ -47,7 +47,7 @@ For building on a fresh Raspbian Stretch or Buster install, these steps should b
 sudo apt-get install cmake
 sudo apt-get install libavahi-compat-libdnssd-dev
 sudo apt-get install libplist-dev
-@@ -52,163 +9,3 @@ mkdir build
+mkdir build
 cd build
 cmake ..
 make
