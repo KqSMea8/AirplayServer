@@ -38,7 +38,6 @@ The following packages are required for building on Raspbian:
 
 For downloading the code, use these commands:
 ```bash
-git clone https://github.com/FD-/RPiPlay.git
 git clone https://github.com/SeungjunProgramming/AirplayRaspberry.git
 cd RPiPlay
 ```
