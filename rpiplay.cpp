@@ -47,7 +47,7 @@
 #define DEFAULT_HW_ADDRESS { (char) 0x48, (char) 0x5d, (char) 0x60, (char) 0x7c, (char) 0xee, (char) 0x22 }
 
 int start_server(std::vector<char> hw_addr, std::string name, bool debug_log,
-                 video_renderer_config_t const *video_config, audio_renderer_config_t const *audio_config);
+                 video_renderer_config_t const *video_config, audio_renderer_config_t const *audio_config, int display_width, int display_height);
 
 int stop_server();
 int display_width = 1920;
