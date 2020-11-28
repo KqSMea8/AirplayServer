@@ -31,6 +31,9 @@ raop_handler_info(raop_conn_t *conn,
 {
     assert(conn->raop->dnssd);
 
+    printf("Display width reported as: %d\n", info_display_width);
+   	printf("Display height reported as: %d\n", info_display_height);
+
     int airplay_txt_len = 0;
     const char *airplay_txt = dnssd_get_airplay_txt(conn->raop->dnssd, &airplay_txt_len);
 
@@ -134,10 +137,10 @@ raop_handler_info(raop_conn_t *conn,
     plist_t displays_0_uuid_node = plist_new_string("e0ff8a27-6738-3d56-8a16-cc53aacee925");
     plist_t displays_0_width_physical_node = plist_new_uint(0);
     plist_t displays_0_height_physical_node = plist_new_uint(0);
-    plist_t displays_0_width_node = plist_new_uint(1920);
-    plist_t displays_0_height_node = plist_new_uint(1080);
-    plist_t displays_0_width_pixels_node = plist_new_uint(1920);
-    plist_t displays_0_height_pixels_node = plist_new_uint(1080);
+    plist_t displays_0_width_node = plist_new_uint(info_display_width);
+    plist_t displays_0_height_node = plist_new_uint(info_display_height);
+    plist_t displays_0_width_pixels_node = plist_new_uint(info_display_width);
+    plist_t displays_0_height_pixels_node = plist_new_uint(info_display_height);
     plist_t displays_0_rotation_node = plist_new_bool(0);
     plist_t displays_0_refresh_rate_node = plist_new_real(1.0 / 60.0);
     plist_t displays_0_overscanned_node = plist_new_bool(1);

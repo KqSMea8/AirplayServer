@@ -41,6 +41,8 @@
 #define DEFAULT_LOW_LATENCY false
 #define DEFAULT_DEBUG_LOG false
 #define DEFAULT_ROTATE 0
+#define DEFAULT_DISPLAY_WIDTH 1920
+#define DEFAULT_DISPLAY_HEIGHT 1080
 #define DEFAULT_FLIP FLIP_NONE
 #define DEFAULT_HW_ADDRESS { (char) 0x48, (char) 0x5d, (char) 0x60, (char) 0x7c, (char) 0xee, (char) 0x22 }
 
@@ -48,7 +50,8 @@ int start_server(std::vector<char> hw_addr, std::string name, bool debug_log,
                  video_renderer_config_t const *video_config, audio_renderer_config_t const *audio_config);
 
 int stop_server();
-
+int display_width = 1920;
+int display_height = 1080;
 typedef video_renderer_t *(*video_init_func_t)(logger_t *logger, video_renderer_config_t const *config);
 typedef audio_renderer_t *(*audio_init_func_t)(logger_t *logger, video_renderer_t *video_renderer, audio_renderer_config_t const *config);
 
@@ -225,6 +228,10 @@ int main(int argc, char *argv[]) {
             audio_config.low_latency = !audio_config.low_latency;
         } else if (arg == "-r") {
             video_config.rotation = atoi(argv[++i]);
+        } else if (arg == "-x") {
+            display_width = atoi(argv[++i]);
+        } else if (arg == "-y") {
+            display_height = atoi(argv[++i]);
         } else if (arg == "-f") {
             if (i == argc - 1) continue;
             std::string flip_type(argv[++i]);
@@ -266,7 +273,7 @@ int main(int argc, char *argv[]) {
         parse_hw_addr(mac_address, server_hw_addr);
     }
 
-    if (start_server(server_hw_addr, server_name, debug_log, &video_config, &audio_config) != 0) {
+    if (start_server(server_hw_addr, server_name, debug_log, &video_config, &audio_config, display_width, display_height) != 0) {
         return 1;
     }
 
@@ -339,7 +346,7 @@ extern "C" void log_callback(void *cls, int level, const char *msg) {
 }
 
 int start_server(std::vector<char> hw_addr, std::string name, bool debug_log,
-                 video_renderer_config_t const *video_config, audio_renderer_config_t const *audio_config) {
+                 video_renderer_config_t const *video_config, audio_renderer_config_t const *audio_config, int display_width, int display_height) {
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.conn_init = conn_init;
@@ -384,6 +391,7 @@ int start_server(std::vector<char> hw_addr, std::string name, bool debug_log,
     unsigned short port = 0;
     raop_start(raop, &port);
     raop_set_port(raop, port);
+    raop_set_display(raop, display_width, display_height);
 
     int error;
     dnssd = dnssd_init(name.c_str(), strlen(name.c_str()), hw_addr.data(), hw_addr.size(), &error);
@@ -393,7 +401,7 @@ int start_server(std::vector<char> hw_addr, std::string name, bool debug_log,
     }
 
     raop_set_dnssd(raop, dnssd);
-
+    //raop_set_display(raop, display_width, display_height)
     dnssd_register_raop(dnssd, port);
     dnssd_register_airplay(dnssd, port + 1);
 

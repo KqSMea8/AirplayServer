@@ -5,6 +5,9 @@
 #include "stream.h"
 #include "raop_ntp.h"
 
+extern unsigned int info_display_width; // Used to set the width of the display that rpiplay reports back to the device that wants to stream
+extern unsigned int info_display_height;
+
 #if defined (WIN32) && defined(DLL_EXPORT)
 # define RAOP_API __declspec(dllexport)
 #else
@@ -25,7 +28,6 @@ extern "C" {
 #define RAOP_LOG_NOTICE      5       /* normal but significant condition */
 #define RAOP_LOG_INFO        6       /* informational */
 #define RAOP_LOG_DEBUG       7       /* debug-level messages */
-
 
 typedef struct raop_s raop_t;
 
@@ -55,6 +57,7 @@ RAOP_API raop_t *raop_init(int max_clients, raop_callbacks_t *callbacks);
 RAOP_API void raop_set_log_level(raop_t *raop, int level);
 RAOP_API void raop_set_log_callback(raop_t *raop, raop_log_callback_t callback, void *cls);
 RAOP_API void raop_set_port(raop_t *raop, unsigned short port);
+RAOP_API void raop_set_display(raop_t *raop, unsigned short display_width, unsigned short display_height);
 RAOP_API unsigned short raop_get_port(raop_t *raop);
 RAOP_API void *raop_get_callback_cls(raop_t *raop);
 RAOP_API int raop_start(raop_t *raop, unsigned short *port);
