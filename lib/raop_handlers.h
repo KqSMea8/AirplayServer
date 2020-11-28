@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <plist/plist.h>
 
+#define FRAMERATE 15.0
+
 typedef void (*raop_handler_t)(raop_conn_t *, http_request_t *,
                                http_response_t *, char **, int *);
 
@@ -142,7 +144,7 @@ raop_handler_info(raop_conn_t *conn,
     plist_t displays_0_width_pixels_node = plist_new_uint(info_display_width);
     plist_t displays_0_height_pixels_node = plist_new_uint(info_display_height);
     plist_t displays_0_rotation_node = plist_new_bool(0);
-    plist_t displays_0_refresh_rate_node = plist_new_real(1.0 / 60.0);
+    plist_t displays_0_refresh_rate_node = plist_new_real(1.0 / FRAMERATE);
     plist_t displays_0_overscanned_node = plist_new_bool(1);
     plist_t displays_0_features = plist_new_uint(14);
 
