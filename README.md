@@ -38,7 +38,7 @@ The following packages are required for building on Raspbian:
 
 For downloading the code, use these commands:
 ```bash
-git clone https://github.com/SeungjunProgramming/AirplayRaspberry.git
+git clone https://github.com/FD-/RPiPlay.git
 cd RPiPlay
 ```
 
@@ -115,6 +115,11 @@ At the moment, these options are implemented:
 
 **-v/-h**: Displays short help and version information.
 
+**-x**: Set display width
+
+**-y**: Set display height
+
+**-z**: Set display framerate(Added #define, adding support for start arg.)
 
 # Disclaimer
 
