@@ -25,6 +25,14 @@
 #include <vector>
 #include <fstream>
 
+#include <sys/socket.h>
+#include <ifaddrs.h>
+#ifdef __linux__
+#include <netpacket/packet.h>
+#else
+#include <net/if_dl.h>   /* macOS and *BSD */
+#endif
+
 #include "log.h"
 #include "lib/raop.h"
 #include "lib/stream.h"
@@ -123,16 +131,43 @@ static int parse_hw_addr(std::string str, std::vector<char> &hw_addr) {
     return 0;
 }
 
-std::string find_mac() {
-    std::ifstream iface_stream("/sys/class/net/eth0/address");
-    if (!iface_stream) {
-        iface_stream.open("/sys/class/net/wlan0/address");
+static std::string find_mac () {
+/*  finds the MAC address of the first active network interface *
+ *  in a Linux, *BSD or macOS system.                           */
+    std::string mac_address = "";
+    struct ifaddrs *ifap, *ifaptr;
+    int non_null_octets = 0;
+    unsigned char octet[6], *ptr;
+    if (getifaddrs(&ifap) == 0) {
+        for(ifaptr = ifap; ifaptr != NULL; ifaptr = ifaptr->ifa_next) {
+            if(ifaptr->ifa_addr == NULL) continue;
+#ifdef __linux__
+            if (ifaptr->ifa_addr->sa_family != AF_PACKET) continue;
+            struct sockaddr_ll *s = (struct sockaddr_ll*) ifaptr->ifa_addr;
+            for (int i = 0; i < 6; i++) {
+                if ((octet[i] = s->sll_addr[i]) != 0) non_null_octets++;
+            }
+#else    /* macOS and *BSD */
+            if (ifaptr->ifa_addr->sa_family != AF_LINK) continue;
+            ptr = (unsigned char *) LLADDR((struct sockaddr_dl *) ifaptr->ifa_addr);
+            for (int i= 0; i < 6 ; i++) {
+                if ((octet[i] = *ptr) != 0) non_null_octets++;
+                ptr++;
+            }
+#endif
+            if (non_null_octets) {
+                mac_address.erase();
+                char str[3];
+                for (int i = 0; i < 6 ; i++) {
+                    sprintf(str,"%02x", octet[i]);
+                    mac_address = mac_address + str;
+                    if (i < 5) mac_address = mac_address + ":";
+                }
+                break;
+            }
+        }
     }
-    if (!iface_stream) return "";
-
-    std::string mac_address;
-    iface_stream >> mac_address;
-    iface_stream.close();
+    freeifaddrs(ifap);
     return mac_address;
 }
 
