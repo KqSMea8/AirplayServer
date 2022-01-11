@@ -32,18 +32,9 @@ if( BRCM_GLES_V2 AND BRCM_EGL AND OPENMAXIL AND BCM_HOST AND VCOS AND VCHIQ_ARM 
   	${CMAKE_SYSROOT}/opt/vc/include/interface/vmcs_host/linux 
   	${CMAKE_SYSROOT}/opt/vc/src/hello_pi/libs/ilclient )
 
-  add_subdirectory( fdk-aac )
+  option(BUILD_SHARED_LIBS "" OFF)
+  add_subdirectory(fdk-aac EXCLUDE_FROM_ALL)
   add_subdirectory( h264-bitstream )
-
-  include_directories( fdk-aac/libAACdec/include
-      fdk-aac/libAACenc/include
-      fdk-aac/libFDK/include
-      fdk-aac/libMpegTPDec/include
-      fdk-aac/libMpegTPEnc/include
-      fdk-aac/libPCMutils/include
-      fdk-aac/libSBRdec/include
-      fdk-aac/libSBRenc/include
-      fdk-aac/libSYS/include )
 
   set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_LIBOPENMAX=2 -DOMX -DOMX_SKIP64BIT -ftree-vectorize -pipe -DUSE_EXTERNAL_OMX   -DHAVE_LIBBCM_HOST -DUSE_EXTERNAL_LIBBCM_HOST -DUSE_VCHIQ_ARM -Wno-psabi" )
   
