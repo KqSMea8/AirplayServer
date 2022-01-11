@@ -1458,7 +1458,7 @@ resetLppTransposer(
         fixMax(pSettings->lbStopPatching, patchParam[patch].sourceStopBand);
   }
 
-  for (i = 0; i < noNoiseBands; i++) {
+  for (i = 0; i < noNoiseBands && i < MAX_NUM_NOISE_VALUES; i++) {
     pSettings->bwBorders[i] = noiseBandTable[i + 1];
   }
   for (; i < MAX_NUM_NOISE_VALUES; i++) {
