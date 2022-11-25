@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.22.1)
+project('airplay-server-c')
 
 add_subdirectory(src/main/cpp/lib/crypto)
 add_subdirectory(src/main/cpp/lib/curve25519)
