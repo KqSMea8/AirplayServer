@@ -12,7 +12,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
-    public static String TAG = "MainActivity";
+    public static String TAG = "Main";
 
     private AirPlayServer mAirPlayServer;
     private RaopServer mRaopServer;

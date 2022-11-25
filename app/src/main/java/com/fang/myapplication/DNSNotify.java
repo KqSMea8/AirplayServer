@@ -102,12 +102,12 @@ public class DNSNotify {
 
         @Override
         public void serviceRegistered(DNSSDRegistration registration, int flags, String serviceName, String regType, String domain) {
-            Log.i("TAG", "Register successfully : " + serviceName);
+            Log.i(TAG, "Register successfully : " + serviceName);
         }
 
         @Override
         public void operationFailed(DNSSDService service, int errorCode) {
-            Log.e("TAG", "error " + errorCode);
+            Log.e(TAG, "error " + errorCode);
         }
 
         public void stop() {

@@ -20,6 +20,7 @@ public class AirPlayServer {
 
     public void startServer() {
         try {
+            Log.d(TAG, "starting server");
             mServerSocket = new ServerSocket(0);
         } catch (IOException e) {
             e.printStackTrace();
@@ -30,6 +31,7 @@ public class AirPlayServer {
 
     public void stopServer() {
         try {
+            Log.d(TAG, "stopping server");
             mServerSocket.close();
         } catch (IOException e) {
             e.printStackTrace();

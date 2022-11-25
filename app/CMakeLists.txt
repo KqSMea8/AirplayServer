@@ -32,7 +32,7 @@ find_library( log-lib
               log )
 
 target_link_libraries( raop_server
-                       ${log-lib}
+        ${log-lib}
         play-lib
         jdns_sd
         ed25519

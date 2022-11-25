@@ -132,5 +132,5 @@ Java_com_fang_myapplication_RaopServer_stop(JNIEnv* env, jobject object, jlong o
     jobject obj = (jobject) raop_get_callback_cls(raop);
     raop_destroy(raop);
     env->DeleteGlobalRef(obj);
-
+    LOGD("roap stopped");
 }
