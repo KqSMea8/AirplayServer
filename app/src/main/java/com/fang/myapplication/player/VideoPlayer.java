@@ -2,6 +2,7 @@ package com.fang.myapplication.player;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.Surface;
 
@@ -37,11 +38,14 @@ public class VideoPlayer extends Thread {
 //            mDecoder = MediaCodec.createByCodecName("OMX.MS.AVC.Decoder");
 //            mDecoder = MediaCodec.createByCodecName("OMX.google.h264.decoder");
 //            mDecoder = MediaCodec.createByCodecName("OMX.MS.VP8.Decoder");
-              //mDecoder = MediaCodec.createByCodecName("OMX.qcom.video.decoder.avc");
 
+            //mDecoder = MediaCodec.createByCodecName("OMX.Exynos.avc.dec");
             mDecoder.configure(format, mSurface, null, 0);
             mDecoder.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT);
-//            mDecoder.setParameters();
+
+            Bundle lowLatency = new Bundle();
+            lowLatency.putInt(MediaCodec.PARAMETER_KEY_LOW_LATENCY , 1);
+            mDecoder.setParameters(lowLatency);
 
             mDecoder.start();
         } catch (Exception e) {
