@@ -9,7 +9,7 @@
  # Function 
 
  1. MDNS release service 
- 2. Handhake protocol 
+ 2. Handshake protocol 
  3. Receive mirror data 
  4. MediaCodec hard solution and display 
  5. Receive audio data 

@@ -2,6 +2,8 @@ package com.fang.myapplication;
 
 import android.app.Activity;
 import android.content.Context;
+import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
@@ -35,6 +37,30 @@ public class MainActivity extends Activity implements View.OnClickListener {
         mAirPlayServer = new AirPlayServer();
         mRaopServer = new RaopServer(mSurfaceView);
         mDNSNotify = new DNSNotify();
+
+        MediaCodecList mediaCodecList = new MediaCodecList(MediaCodecList.ALL_CODECS);
+        MediaCodecInfo[] mediaCodecInfos = mediaCodecList.getCodecInfos();
+
+        for (int i = 0; i < mediaCodecInfos.length; i++) {
+            if (!mediaCodecInfos[i].isEncoder()) {
+                continue;
+            }
+            if (mediaCodecInfos[i].isSoftwareOnly()) {
+                continue;
+            }
+            Log.d(TAG, "codec= " + mediaCodecInfos[i].getName() +
+                    "\nis_encoder="+ mediaCodecInfos[i].isEncoder() +
+                    "\nis_vendor=" + mediaCodecInfos[i].isVendor() +
+                    "\nhw_acc=" + mediaCodecInfos[i].isHardwareAccelerated() +
+                    "\nsw_acc=" + mediaCodecInfos[i].isSoftwareOnly()
+                    );
+            String[] types = mediaCodecInfos[i].getSupportedTypes();
+            Log.d(TAG, "supported codec = " + String.join(", ", types));
+
+//            for (int j = 0; j < types.length; j++) {
+//                Log.d(TAG, "supported codec = " + types[j]);
+//            }
+        }
     }
 
     @Override
