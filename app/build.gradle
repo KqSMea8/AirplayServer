@@ -1,12 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 33
+    compileSdk 30
     defaultConfig {
         namespace "com.fang.myapplication"
         applicationId "com.fang.myapplication"
-        minSdkVersion 22
-        targetSdkVersion 33
+        minSdk 29
+        targetSdk 30
         ndkVersion "25.1.8937393"
         versionCode 1
         versionName "1.0"
