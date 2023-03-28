@@ -5,7 +5,7 @@ android {
     defaultConfig {
         namespace "com.fang.myapplication"
         applicationId "com.fang.myapplication"
-        minSdk 29
+        minSdk 30
         targetSdk 30
         ndkVersion "25.1.8937393"
         versionCode 1
