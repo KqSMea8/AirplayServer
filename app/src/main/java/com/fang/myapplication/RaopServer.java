@@ -15,7 +15,7 @@ public class RaopServer implements SurfaceHolder.Callback {
         System.loadLibrary("raop_server");
         System.loadLibrary("play-lib");
     }
-    private static final String TAG = "RaopServer";
+    private static final String TAG = "AIS-RaopServer";
     private VideoPlayer mVideoPlayer;
     private AudioPlayer mAudioPlayer;
     private SurfaceView mSurfaceView;

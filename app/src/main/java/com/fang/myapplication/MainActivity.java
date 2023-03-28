@@ -14,7 +14,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
-    public static String TAG = "Main";
+    public static String TAG = "AIS-RAOP-Main";
 
     private AirPlayServer mAirPlayServer;
     private RaopServer mRaopServer;
@@ -42,10 +42,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         MediaCodecInfo[] mediaCodecInfos = mediaCodecList.getCodecInfos();
 
         for (int i = 0; i < mediaCodecInfos.length; i++) {
-            if (!mediaCodecInfos[i].isEncoder()) {
-                continue;
-            }
-            if (mediaCodecInfos[i].isSoftwareOnly()) {
+            if (mediaCodecInfos[i].isEncoder()) {
                 continue;
             }
             Log.d(TAG, "codec= " + mediaCodecInfos[i].getName() +

@@ -14,11 +14,11 @@ import java.util.List;
 
 public class VideoPlayer extends Thread {
 
-    private static final String TAG = "VideoPlayer";
+    private static final String TAG = "AIS-VideoPlayer";
 
     private String mMimeType = "video/avc";
-    private int mVideoWidth  = 540;
-    private int mVideoHeight = 960;
+    private int mVideoWidth  = 1920;
+    private int mVideoHeight = 1080;
     private MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
     private MediaCodec mDecoder = null;
     private Surface mSurface = null;
@@ -32,9 +32,17 @@ public class VideoPlayer extends Thread {
     public void initDecoder() {
         try {
             MediaFormat format = MediaFormat.createVideoFormat(mMimeType, mVideoWidth, mVideoHeight);
+            // working:
             mDecoder = MediaCodec.createDecoderByType(mMimeType);
+//            mDecoder = MediaCodec.createByCodecName("OMX.MS.AVC.Decoder");
+//            mDecoder = MediaCodec.createByCodecName("OMX.google.h264.decoder");
+//            mDecoder = MediaCodec.createByCodecName("OMX.MS.VP8.Decoder");
+              //mDecoder = MediaCodec.createByCodecName("OMX.qcom.video.decoder.avc");
+
             mDecoder.configure(format, mSurface, null, 0);
             mDecoder.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT);
+//            mDecoder.setParameters();
+
             mDecoder.start();
         } catch (Exception e) {
             e.printStackTrace();

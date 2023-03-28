@@ -12,7 +12,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class DNSNotify {
 
-    public static String TAG = "DNSNotify";
+    public static String TAG = "AIS-DNSNotify";
 
     private Register mAirplayRegister;
     private Register mRaopRegister;

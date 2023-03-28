@@ -8,7 +8,7 @@ import java.net.Socket;
 
 public class AirPlayServer {
 
-    public static String TAG = "AirPlayServer";
+    public static String TAG = "AIS-AirPlayServer";
 
     private ServerSocket mServerSocket = null;
     private ServerThread mServerThread = null;
