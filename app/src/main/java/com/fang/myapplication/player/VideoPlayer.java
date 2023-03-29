@@ -86,15 +86,15 @@ public class VideoPlayer extends Thread {
 
 			if ( decoderSupportsAndroidRLowLatency(mDecoderInfo, videoFormat.getString(MediaFormat.KEY_MIME)) )
 			{
-//				videoFormat.setInteger("low-latency", 1);
+				videoFormat.setInteger("low-latency", 1);
 				videoFormat.setInteger("vendor.rtc-ext-dec-low-latency.enable", 1);
 			}
 
 			if ( decoderSupportsAdaptivePlayback(mDecoderInfo, mMimeType) ) {
 //				videoFormat.setInteger(MediaFormat.KEY_MAX_WIDTH, 1280);
 //				videoFormat.setInteger(MediaFormat.KEY_MAX_HEIGHT, 720);
-//				videoFormat.setInteger(MediaFormat.KEY_MAX_WIDTH, 1920);
-//				videoFormat.setInteger(MediaFormat.KEY_MAX_HEIGHT, 1080);
+				videoFormat.setInteger(MediaFormat.KEY_MAX_WIDTH, 1920);
+				videoFormat.setInteger(MediaFormat.KEY_MAX_HEIGHT, 1080);
 			}
 
 			// mDecoder = MediaCodec.createByCodecName("OMX.MS.AVC.Decoder");
@@ -137,7 +137,7 @@ public class VideoPlayer extends Thread {
 	}
 
 	private void doDecode(NALPacket nalPacket) {
-		final int TIMEOUT_USEC = 10000;
+		final int TIMEOUT_USEC = 1000;
 		ByteBuffer[] decoderInputBuffers = mDecoder.getInputBuffers();
 		int inputBufIndex = -10000;
 		try {

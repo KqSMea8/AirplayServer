@@ -26,7 +26,7 @@ public class DNSNotify {
     }
 
     public void changeDeviceName() {
-        mDeviceName = "t" + mDeviceTail++;
+        mDeviceName = "airplay_demo_" + mDeviceTail++;
     }
 
     public String getDeviceName() {
