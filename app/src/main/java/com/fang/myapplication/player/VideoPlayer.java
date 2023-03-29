@@ -20,10 +20,10 @@ public class VideoPlayer extends Thread {
 	private static final String TAG = "AIS-VideoPlayer";
 
 	private String mMimeType = "video/avc";
-	private int mVideoWidth = 1280;
-	private int mVideoHeight = 720;
-	// private int mVideoWidth = 1920;
-	// private int mVideoHeight = 1080;
+//	private int mVideoWidth = 1280;
+//	private int mVideoHeight = 720;
+	 private int mVideoWidth = 1920;
+	 private int mVideoHeight = 1080;
 	private MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
 	private MediaCodec mDecoder = null;
 	private Surface mSurface = null;
@@ -53,30 +53,56 @@ public class VideoPlayer extends Thread {
         return false;
     }
 
+	public static boolean decoderSupportsAdaptivePlayback(MediaCodecInfo decoderInfo, String mimeType) {
+		// Possibly enable adaptive playback on KitKat and above
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+			try {
+				if (decoderInfo.getCapabilitiesForType(mimeType).
+						isFeatureSupported(MediaCodecInfo.CodecCapabilities.FEATURE_AdaptivePlayback))
+				{
+					// This will make getCapabilities() return that adaptive playback is supported
+					Log.i(TAG, "Adaptive playback supported (FEATURE_AdaptivePlayback)");
+					return true;
+				}
+			} catch (Exception e) {
+				// Tolerate buggy codecs
+				e.printStackTrace();
+			}
+		}
+
+		Log.w(TAG, "Adaptive playback NOT supported (FEATURE_AdaptivePlayback)");
+		return false;
+	}
+
 
 	public void initDecoder() {
 		try {
-			MediaFormat format = MediaFormat.createVideoFormat(mMimeType, mVideoWidth, mVideoHeight);
+			MediaFormat videoFormat = MediaFormat.createVideoFormat(mMimeType, mVideoWidth, mVideoHeight);
 
-
-			format.setInteger("low-latency", 1);
-			format.setInteger("vendor.rtc-ext-dec-low-latency.enable", 1);
-
-
-			// working:
 			mDecoder = MediaCodec.createDecoderByType(mMimeType);
-
 
 			MediaCodecInfo mDecoderInfo =  mDecoder.getCodecInfo();
 			Log.i(TAG, "DECODER SELECTED = " + mDecoderInfo.getName());
-			decoderSupportsAndroidRLowLatency(mDecoderInfo, format.getString(MediaFormat.KEY_MIME));
+
+			if ( decoderSupportsAndroidRLowLatency(mDecoderInfo, videoFormat.getString(MediaFormat.KEY_MIME)) )
+			{
+//				videoFormat.setInteger("low-latency", 1);
+				videoFormat.setInteger("vendor.rtc-ext-dec-low-latency.enable", 1);
+			}
+
+			if ( decoderSupportsAdaptivePlayback(mDecoderInfo, mMimeType) ) {
+//				videoFormat.setInteger(MediaFormat.KEY_MAX_WIDTH, 1280);
+//				videoFormat.setInteger(MediaFormat.KEY_MAX_HEIGHT, 720);
+//				videoFormat.setInteger(MediaFormat.KEY_MAX_WIDTH, 1920);
+//				videoFormat.setInteger(MediaFormat.KEY_MAX_HEIGHT, 1080);
+			}
 
 			// mDecoder = MediaCodec.createByCodecName("OMX.MS.AVC.Decoder");
 			// mDecoder = MediaCodec.createByCodecName("OMX.google.h264.decoder");
 			// mDecoder = MediaCodec.createByCodecName("OMX.MS.VP8.Decoder");
 
 			// mDecoder = MediaCodec.createByCodecName("OMX.Exynos.avc.dec");
-			mDecoder.configure(format, mSurface, null, 0);
+			mDecoder.configure(videoFormat, mSurface, null, 0);
 			mDecoder.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT);
 
 			// Bundle lowLatency = new Bundle();
@@ -100,7 +126,7 @@ public class VideoPlayer extends Thread {
 		while (!mIsEnd) {
 			if (mListBuffer.size() == 0) {
 				try {
-					sleep(50);
+					sleep(1);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -136,7 +162,7 @@ public class VideoPlayer extends Thread {
 		if (outputBufferIndex >= 0) {
 			mDecoder.releaseOutputBuffer(outputBufferIndex, true);
 			try {
-				Thread.sleep(50);
+				Thread.sleep(20);
 			} catch (InterruptedException ie) {
 				ie.printStackTrace();
 			}
