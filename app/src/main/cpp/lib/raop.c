@@ -32,7 +32,7 @@
 #include <android/log.h>
 
 struct raop_s {
-	/* Callbacks for audio */
+	/* Callbacks for audio and video */
 	raop_callbacks_t callbacks;
 
 	/* Logger instance */
