@@ -20,4 +20,4 @@ This is a Android low latency Airplay server.
 
 # Show Screenshot
 
-wip
+![Alt text](docs/IMG_20230329_175147171p_HDR.jpg)

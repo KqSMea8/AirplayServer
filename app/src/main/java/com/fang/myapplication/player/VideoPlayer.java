@@ -90,12 +90,12 @@ public class VideoPlayer extends Thread {
 				videoFormat.setInteger("vendor.rtc-ext-dec-low-latency.enable", 1);
 			}
 
-			if ( decoderSupportsAdaptivePlayback(mDecoderInfo, mMimeType) ) {
-//				videoFormat.setInteger(MediaFormat.KEY_MAX_WIDTH, 1280);
-//				videoFormat.setInteger(MediaFormat.KEY_MAX_HEIGHT, 720);
-				videoFormat.setInteger(MediaFormat.KEY_MAX_WIDTH, 1920);
-				videoFormat.setInteger(MediaFormat.KEY_MAX_HEIGHT, 1080);
-			}
+// 			if ( decoderSupportsAdaptivePlayback(mDecoderInfo, mMimeType) ) {
+// //				videoFormat.setInteger(MediaFormat.KEY_MAX_WIDTH, 1280);
+// //				videoFormat.setInteger(MediaFormat.KEY_MAX_HEIGHT, 720);
+// 				videoFormat.setInteger(MediaFormat.KEY_MAX_WIDTH, 1920);
+// 				videoFormat.setInteger(MediaFormat.KEY_MAX_HEIGHT, 1080);
+// 			}
 
 			// mDecoder = MediaCodec.createByCodecName("OMX.MS.AVC.Decoder");
 			// mDecoder = MediaCodec.createByCodecName("OMX.google.h264.decoder");
@@ -161,14 +161,14 @@ public class VideoPlayer extends Thread {
 		}
 		if (outputBufferIndex >= 0) {
 			mDecoder.releaseOutputBuffer(outputBufferIndex, true);
-			try {
-				Thread.sleep(20);
-			} catch (InterruptedException ie) {
-				ie.printStackTrace();
-			}
+//			try {
+//				Thread.sleep(20);
+//			} catch (InterruptedException ie) {
+//				ie.printStackTrace();
+//			}
 		} else if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
 			try {
-				Thread.sleep(10);
+				Thread.sleep(1);
 			} catch (InterruptedException ie) {
 				ie.printStackTrace();
 			}
