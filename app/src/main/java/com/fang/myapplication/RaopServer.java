@@ -15,7 +15,7 @@ public class RaopServer implements SurfaceHolder.Callback {
         System.loadLibrary("raop_server");
         System.loadLibrary("play-lib");
     }
-    private static final String TAG = "RaopServer";
+    private static final String TAG = "AIS-RaopServer";
     private VideoPlayer mVideoPlayer;
     private AudioPlayer mAudioPlayer;
     private SurfaceView mSurfaceView;
@@ -29,11 +29,12 @@ public class RaopServer implements SurfaceHolder.Callback {
     }
 
     public void onRecvVideoData(byte[] nal, int nalType, long dts, long pts) {
-        Log.d(TAG, "onRecvVideoData pts = " + pts + ", nalType = " + nalType + ", nal length = " + nal.length);
+        Log.d(TAG, "onRecvVideoData dts = " + dts + ", pts = " + pts + ", nalType = " + nalType + ", nal length = " + nal.length);
         NALPacket nalPacket = new NALPacket();
         nalPacket.nalData = nal;
         nalPacket.nalType = nalType;
         nalPacket.pts = pts;
+		nalPacket.dts = dts;
         mVideoPlayer.addPacker(nalPacket);
     }
 

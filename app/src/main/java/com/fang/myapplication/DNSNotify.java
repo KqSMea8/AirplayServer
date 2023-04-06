@@ -12,7 +12,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class DNSNotify {
 
-    public static String TAG = "DNSNotify";
+    public static String TAG = "AIS-DNSNotify";
 
     private Register mAirplayRegister;
     private Register mRaopRegister;
@@ -26,7 +26,7 @@ public class DNSNotify {
     }
 
     public void changeDeviceName() {
-        mDeviceName = "t" + mDeviceTail++;
+        mDeviceName = "airplay_demo_" + mDeviceTail++;
     }
 
     public String getDeviceName() {
@@ -102,12 +102,12 @@ public class DNSNotify {
 
         @Override
         public void serviceRegistered(DNSSDRegistration registration, int flags, String serviceName, String regType, String domain) {
-            Log.i("TAG", "Register successfully : " + serviceName);
+            Log.i(TAG, "Register successfully : " + serviceName);
         }
 
         @Override
         public void operationFailed(DNSSDService service, int errorCode) {
-            Log.e("TAG", "error " + errorCode);
+            Log.e(TAG, "error " + errorCode);
         }
 
         public void stop() {

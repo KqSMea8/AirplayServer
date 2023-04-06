@@ -266,7 +266,7 @@ raop_handler_setup(raop_conn_t *conn,
     }
 
 
-    // 解析bplist
+    // Parsing bplist
     plist_t root_node = NULL;
     plist_from_bin(data, datalen, &root_node);
     plist_t streams_note = plist_dict_get_item(root_node, "streams");
@@ -275,7 +275,7 @@ raop_handler_setup(raop_conn_t *conn,
 		unsigned char aeskey[16];
         setup++;
         logger_log(conn->raop->logger, LOGGER_DEBUG, "SETUP 1");
-        // 第一次setup
+        // First setup
         plist_t eiv_note = plist_dict_get_item(root_node, "eiv");
         char* eiv= NULL;
         uint64_t eiv_len = 0;
@@ -287,12 +287,12 @@ raop_handler_setup(raop_conn_t *conn,
         uint64_t ekey_len = 0;
         plist_get_data_val(ekey_note, &ekey, &ekey_len);
         logger_log(conn->raop->logger, LOGGER_DEBUG, "ekey_len = %llu", ekey_len);
-        // 时间port
+        // Time port
 		uint64_t timing_rport;
         plist_t time_note = plist_dict_get_item(root_node, "timingPort");
         plist_get_uint_val(time_note, &timing_rport);
 		logger_log(conn->raop->logger, LOGGER_DEBUG, "timing_rport = %llu", timing_rport);
-        // ekey是72字节
+        // ekey is 72 bytes
         int ret = fairplay_decrypt(conn->fairplay, ekey, aeskey);
         logger_log(conn->raop->logger, LOGGER_DEBUG, "fairplay_decrypt ret = %d", ret);
 		unsigned char ecdh_secret[32];
@@ -355,7 +355,7 @@ raop_handler_setup(raop_conn_t *conn,
             logger_log(conn->raop->logger, LOGGER_ERR, "RAOP not initialized at SETUP, playing will fail!");
             http_response_set_disconnect(response, 1);
         }
-        // 需要返回端口
+        // Need to return port
 		/**
 		 * <dict>
 	<key>streams</key>

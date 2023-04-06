@@ -8,7 +8,7 @@ import java.net.Socket;
 
 public class AirPlayServer {
 
-    public static String TAG = "AirPlayServer";
+    public static String TAG = "AIS-AirPlayServer";
 
     private ServerSocket mServerSocket = null;
     private ServerThread mServerThread = null;
@@ -20,6 +20,7 @@ public class AirPlayServer {
 
     public void startServer() {
         try {
+            Log.d(TAG, "starting server");
             mServerSocket = new ServerSocket(0);
         } catch (IOException e) {
             e.printStackTrace();
@@ -30,6 +31,7 @@ public class AirPlayServer {
 
     public void stopServer() {
         try {
+            Log.d(TAG, "stopping server");
             mServerSocket.close();
         } catch (IOException e) {
             e.printStackTrace();
